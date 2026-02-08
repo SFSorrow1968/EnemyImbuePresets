@@ -996,6 +996,31 @@ namespace EnemyImbuePresets.Configuration
             return hash;
         }
 
+        /// <summary>
+        /// Hash of runtime assignment inputs only (values that affect roll/apply behavior).
+        /// Excludes diagnostics/UI-only options to avoid unnecessary rerolls.
+        /// </summary>
+        public static int GetAssignmentStateHash()
+        {
+            int hash = 29;
+            hash = CombineHash(hash, EnableMod ? 1 : 0);
+            hash = CombineHash(hash, EnemyTypeCasterEligible ? 1 : 0);
+            hash = CombineHash(hash, EnemyTypeNonCasterEligible ? 1 : 0);
+
+            for (int faction = 1; faction <= FactionCount; faction++)
+            {
+                hash = CombineHash(hash, GetFactionEnabled(faction) ? 1 : 0);
+                for (int slot = 1; slot <= ImbueSlotsPerFaction; slot++)
+                {
+                    hash = CombineHash(hash, StringHash(GetFactionSlotSpell(faction, slot)));
+                    hash = CombineHash(hash, PercentHash(GetFactionSlotChance(faction, slot)));
+                    hash = CombineHash(hash, PercentHash(GetFactionSlotStrength(faction, slot)));
+                }
+            }
+
+            return hash;
+        }
+
         public static bool ApplySelectedPresets()
         {
             return ApplyPresets(

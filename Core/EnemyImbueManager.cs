@@ -58,7 +58,7 @@ namespace EnemyImbuePresets.Core
         private float nextUpdateTime;
         private float nextRescanTime;
         private float nextApplyLogCleanupTime;
-        private int lastOptionsHash;
+        private int lastAssignmentHash;
 
         private struct CachedCasterSpell
         {
@@ -86,7 +86,7 @@ namespace EnemyImbuePresets.Core
             nextUpdateTime = 0f;
             nextRescanTime = 0f;
             nextApplyLogCleanupTime = 0f;
-            lastOptionsHash = EIPModOptions.GetOptionsStateHash();
+            lastAssignmentHash = EIPModOptions.GetAssignmentStateHash();
 
             TrackCurrentCreatures(forceRefresh: true, Time.unscaledTime);
             EIPLog.Info("Enemy imbue manager initialized.");
@@ -103,7 +103,7 @@ namespace EnemyImbuePresets.Core
             casterPositiveCache.Clear();
             casterNegativeRetryUntil.Clear();
             casterSpellCache.Clear();
-            lastOptionsHash = int.MinValue;
+            lastAssignmentHash = int.MinValue;
             EIPLog.Info("Enemy imbue manager shut down.");
         }
 
@@ -125,10 +125,10 @@ namespace EnemyImbuePresets.Core
             nextUpdateTime = now + updateInterval;
             CleanupApplyLogTimes(now);
 
-            int optionsHash = EIPModOptions.GetOptionsStateHash();
-            if (optionsHash != lastOptionsHash)
+            int assignmentHash = EIPModOptions.GetAssignmentStateHash();
+            if (assignmentHash != lastAssignmentHash)
             {
-                lastOptionsHash = optionsHash;
+                lastAssignmentHash = assignmentHash;
                 TrackCurrentCreatures(forceRefresh: true, now);
                 EIPLog.Info("Configuration changed, refreshed tracked assignments.", true);
             }
@@ -180,7 +180,7 @@ namespace EnemyImbuePresets.Core
             casterPositiveCache.Clear();
             casterNegativeRetryUntil.Clear();
             casterSpellCache.Clear();
-            lastOptionsHash = int.MinValue;
+            lastAssignmentHash = int.MinValue;
             EIPLog.Info("Level unload detected, cleared tracked states.");
         }
 
@@ -502,7 +502,43 @@ namespace EnemyImbuePresets.Core
 
         private static bool IsEligibleCreature(Creature creature)
         {
-            return creature != null && !creature.isPlayer && creature.gameObject.activeInHierarchy;
+            return creature != null &&
+                   creature.gameObject != null &&
+                   creature.gameObject.activeInHierarchy &&
+                   !IsPlayerControlledCreature(creature);
+        }
+
+        private static bool IsPlayerControlledCreature(Creature creature)
+        {
+            if (creature == null)
+            {
+                return false;
+            }
+
+            if (creature.isPlayer)
+            {
+                return true;
+            }
+
+            if (Player.currentCreature != null && ReferenceEquals(creature, Player.currentCreature))
+            {
+                return true;
+            }
+
+            // ThunderRoad commonly maps the player faction to id 2.
+            if (creature.factionId == 2)
+            {
+                return true;
+            }
+
+            string dataId = creature.data?.id;
+            if (!string.IsNullOrWhiteSpace(dataId) &&
+                dataId.IndexOf("player", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                return true;
+            }
+
+            return false;
         }
 
         private void ProcessTrackedCreatures(float now)

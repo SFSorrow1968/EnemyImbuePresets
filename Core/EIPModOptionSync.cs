@@ -193,7 +193,10 @@ namespace EnemyImbuePresets.Core
             lastPresetHash = EIPModOptions.GetPresetSelectionHash();
             lastChanceHash = EIPModOptions.GetChanceStateHash();
 
-            LogPresetBatchWrite(factionProfilePreset, enemyTypeProfilePreset, imbuePreset, chancePreset, strengthPreset, valuesChanged, uiChanged, force);
+            if (force || valuesChanged || uiChanged)
+            {
+                LogPresetBatchWrite(factionProfilePreset, enemyTypeProfilePreset, imbuePreset, chancePreset, strengthPreset, valuesChanged, uiChanged, force);
+            }
             return valuesChanged || uiChanged;
         }
 
@@ -286,6 +289,11 @@ namespace EnemyImbuePresets.Core
             bool uiChanged,
             bool force)
         {
+            if (!force && !valuesChanged && !uiChanged)
+            {
+                return;
+            }
+
             EIPLog.Info(
                 "Preset batch wrote faction collapsible values: " +
                 "factionProfile=" + factionProfilePreset +
@@ -298,7 +306,8 @@ namespace EnemyImbuePresets.Core
                 ", nonCasterEligible=" + EIPModOptions.EnemyTypeNonCasterEligible +
                 ", valuesChanged=" + valuesChanged +
                 ", uiSynced=" + uiChanged +
-                ", force=" + force);
+                ", force=" + force,
+                verboseOnly: !valuesChanged && !uiChanged);
 
             for (int faction = 1; faction <= EIPModOptions.FactionCount; faction++)
             {
