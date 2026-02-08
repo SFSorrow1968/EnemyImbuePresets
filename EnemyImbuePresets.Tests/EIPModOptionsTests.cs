@@ -14,6 +14,12 @@ namespace EnemyImbuePresets.Tests
         }
 
         [Test]
+        public void SessionDiagnostics_DefaultsOff()
+        {
+            Assert.That(EIPModOptions.SessionDiagnostics, Is.False);
+        }
+
+        [Test]
         public void NormalizePresets_MapsKnownAliases()
         {
             Assert.That(EIPModOptions.NormalizeFactionProfilePreset("High Magic Conflict"), Is.EqualTo(EIPModOptions.PresetProfileHighMagic));

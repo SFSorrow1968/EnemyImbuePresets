@@ -40,6 +40,7 @@ namespace EnemyImbuePresets.Configuration
         private const string OptionEnemyTypeUncertainFallback = "Uncertain Enemy Type Fallback";
 
         private const string OptionLogLevel = "Log Level";
+        private const string OptionSessionDiagnostics = "Session Diagnostics";
         private const string OptionUpdateInterval = "Imbue Update Interval";
         private const string OptionRescanInterval = "Enemy Rescan Interval";
         private const string OptionDumpFactions = "Dump Factions";
@@ -529,6 +530,8 @@ namespace EnemyImbuePresets.Configuration
 
         [ModOption(name = OptionLogLevel, category = CategoryDiagnostics, categoryOrder = 999, order = 0, defaultValueIndex = 1, valueSourceName = nameof(LogLevelProvider))]
         public static string LogLevel = "Basic";
+        [ModOption(name = OptionSessionDiagnostics, category = CategoryDiagnostics, categoryOrder = 999, order = 5, defaultValueIndex = 0, tooltip = "Emit structured session diagnostics summaries even when Log Level is Basic/Off")]
+        public static bool SessionDiagnostics = false;
         [ModOption(name = OptionUpdateInterval, category = CategoryDiagnostics, categoryOrder = 999, order = 10, defaultValueIndex = 4, valueSourceName = nameof(UpdateIntervalProvider), interactionType = (ModOption.InteractionType)2)]
         public static float UpdateInterval = 0.25f;
         [ModOption(name = OptionRescanInterval, category = CategoryDiagnostics, categoryOrder = 999, order = 20, defaultValueIndex = 3, valueSourceName = nameof(RescanIntervalProvider), interactionType = (ModOption.InteractionType)2)]
