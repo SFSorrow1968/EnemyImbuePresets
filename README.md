@@ -13,10 +13,10 @@ Factioned Imbuement is a framework-style mod for assigning weapon imbues to enem
 - `Imbue` supports `None (No Imbue)` to intentionally leave a slot empty.
 - Chance values normalize per faction if total slot chance exceeds `100%`.
 - `Enemy Type Eligibility` collapsible:
-- `Mage Eligible`, `Mage Bow Eligible`, `Mage Melee Eligible`, `Bow Eligible`, and `Melee Eligible` toggles.
+- `Mage Eligible`, `Bow Eligible`, and `Melee Eligible` toggles.
 - `Uncertain Enemy Type Fallback` (`Treat As Melee` or `Skip Enemy`) for weak/ambiguous runtime detection cases.
-- `Enemy Type Profile Preset` batch-writes these enemy-type toggles (`Mage`, `Mage Bow`, `Mage Melee`, `Mage Bow Melee`, `Random`).
-- In `Mage` enemy-type profile mode, caster-type enemies mirror their loaded/casting spell id for weapon imbues; if no valid cast spell is detected, slot spell values remain the fallback.
+- `Enemy Type Profile Preset` batch-writes these enemy-type toggles (`Casters`, `Ranged`, `All`).
+- In `Casters` enemy-type profile mode, caster-type enemies mirror their loaded/casting spell id for weapon imbues; if no valid cast spell is detected, slot spell values remain the fallback.
 - Preset sync behavior:
 - Changing a preset writes values directly into all faction sections (last edited wins afterward).
 - Diagnostics/logging grouped under final `Diagnostics` collapsible.

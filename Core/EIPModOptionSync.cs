@@ -409,11 +409,9 @@ namespace EnemyImbuePresets.Core
         {
             switch (EIPModOptions.NormalizeEnemyTypeProfilePreset(preset))
             {
-                case EIPModOptions.PresetProfileFrontier: return "Mage Bow";
-                case EIPModOptions.PresetProfileWarfront: return "Mage Melee";
-                case EIPModOptions.PresetProfileHighMagic: return "Mage Bow Melee";
-                case EIPModOptions.PresetProfileRandom: return "Random";
-                default: return "Mage";
+                case EIPModOptions.PresetEnemyTypeRanged: return "Ranged";
+                case EIPModOptions.PresetEnemyTypeAll: return "All";
+                default: return "Casters";
             }
         }
 

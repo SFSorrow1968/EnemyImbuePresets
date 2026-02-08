@@ -12,7 +12,6 @@ namespace EnemyImbuePresets.Tests
             EIPModOptions.EnableBasicLogging = true;
             EIPModOptions.EnableDiagnosticsLogging = false;
             EIPModOptions.EnableVerboseLogging = false;
-            EIPModOptions.SessionDiagnostics = false;
         }
 
         [Test]
@@ -23,9 +22,12 @@ namespace EnemyImbuePresets.Tests
         }
 
         [Test]
-        public void SessionDiagnostics_DefaultsOff()
+        public void EnemyTypePresets_UseThreeModeModel()
         {
-            Assert.That(EIPModOptions.SessionDiagnostics, Is.False);
+            Assert.That(EIPModOptions.NormalizeEnemyTypeProfilePreset("mage only"), Is.EqualTo(EIPModOptions.PresetEnemyTypeMageOnly));
+            Assert.That(EIPModOptions.NormalizeEnemyTypeProfilePreset("casters"), Is.EqualTo(EIPModOptions.PresetEnemyTypeMageOnly));
+            Assert.That(EIPModOptions.NormalizeEnemyTypeProfilePreset("ranged"), Is.EqualTo(EIPModOptions.PresetEnemyTypeRanged));
+            Assert.That(EIPModOptions.NormalizeEnemyTypeProfilePreset("all"), Is.EqualTo(EIPModOptions.PresetEnemyTypeAll));
         }
 
         [Test]
@@ -40,7 +42,7 @@ namespace EnemyImbuePresets.Tests
         public void NormalizePresets_MapsKnownAliases()
         {
             Assert.That(EIPModOptions.NormalizeFactionProfilePreset("High Magic Conflict"), Is.EqualTo(EIPModOptions.PresetProfileHighMagic));
-            Assert.That(EIPModOptions.NormalizeEnemyTypeProfilePreset("mage melee"), Is.EqualTo(EIPModOptions.PresetProfileWarfront));
+            Assert.That(EIPModOptions.NormalizeEnemyTypeProfilePreset("mage melee"), Is.EqualTo(EIPModOptions.PresetEnemyTypeAll));
             Assert.That(EIPModOptions.NormalizeImbuePreset("random"), Is.EqualTo(EIPModOptions.PresetImbueRandomized));
             Assert.That(EIPModOptions.NormalizeChancePreset("Relentless Threat"), Is.EqualTo(EIPModOptions.PresetChanceRelentless));
             Assert.That(EIPModOptions.NormalizeStrengthPreset("cataclysmic"), Is.EqualTo(EIPModOptions.PresetStrengthCataclysmic));

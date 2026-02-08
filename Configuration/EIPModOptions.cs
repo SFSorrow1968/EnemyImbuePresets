@@ -15,7 +15,6 @@ namespace EnemyImbuePresets.Configuration
         private const string CategoryPresets = "Factioned Imbuement";
         private const string CategoryEnemyTypes = "Enemy Type Eligibility";
         private const string CategoryDiagnostics = "Advanced";
-        private const string CategoryDiagnosticsDumps = "Advanced - Dumps";
 
         private const string CategoryF01 = "Combat Practice (Mixed Enemies)";
         private const string CategoryF02 = "Outlaws (T0)";
@@ -34,8 +33,6 @@ namespace EnemyImbuePresets.Configuration
         private const string OptionPresetStrength = "Strength Experience Preset";
 
         private const string OptionEnemyTypeMageEligible = "Mage Eligible";
-        private const string OptionEnemyTypeMageBowEligible = "Mage Bow Eligible";
-        private const string OptionEnemyTypeMageMeleeEligible = "Mage Melee Eligible";
         private const string OptionEnemyTypeBowEligible = "Bow Eligible";
         private const string OptionEnemyTypeMeleeEligible = "Melee Eligible";
         private const string OptionEnemyTypeUncertainFallback = "Uncertain Enemy Type Fallback";
@@ -43,13 +40,8 @@ namespace EnemyImbuePresets.Configuration
         private const string OptionEnableBasicLogging = "Basic Logs";
         private const string OptionEnableDiagnosticsLogging = "Diagnostics Logs";
         private const string OptionEnableVerboseLogging = "Verbose Logs";
-        private const string OptionSessionDiagnostics = "Session Diagnostics";
         private const string OptionUpdateInterval = "Imbue Update Interval";
         private const string OptionRescanInterval = "Enemy Rescan Interval";
-        private const string OptionDumpFactions = "Dump Factions";
-        private const string OptionDumpWaveMap = "Dump Wave-Faction Map";
-        private const string OptionDumpState = "Dump State";
-        private const string OptionDumpEnemyTypes = "Dump Enemy Type Detection";
         private const string OptionForceReapply = "Force Reapply";
 
         private const string OptionF01Enabled = "Combat Enabled";
@@ -145,6 +137,9 @@ namespace EnemyImbuePresets.Configuration
         public const string PresetProfileWarfront = "WarfrontArcana";
         public const string PresetProfileHighMagic = "HighMagicConflict";
         public const string PresetProfileRandom = "RandomizedEligibility";
+        public const string PresetEnemyTypeMageOnly = "MageOnly";
+        public const string PresetEnemyTypeRanged = "Ranged";
+        public const string PresetEnemyTypeAll = "All";
 
         public const string EnemyTypeFallbackMelee = "Melee";
         public const string EnemyTypeFallbackSkip = "Skip";
@@ -220,8 +215,6 @@ namespace EnemyImbuePresets.Configuration
         private static readonly string[] EnemyTypeDisplayNames =
         {
             "Mage",
-            "Mage Bow",
-            "Mage Melee",
             "Bow",
             "Melee",
         };
@@ -229,8 +222,6 @@ namespace EnemyImbuePresets.Configuration
         private static readonly string[] EnemyTypeOptionNames =
         {
             OptionEnemyTypeMageEligible,
-            OptionEnemyTypeMageBowEligible,
-            OptionEnemyTypeMageMeleeEligible,
             OptionEnemyTypeBowEligible,
             OptionEnemyTypeMeleeEligible,
         };
@@ -238,8 +229,6 @@ namespace EnemyImbuePresets.Configuration
         private static readonly string[] EnemyTypeTokens =
         {
             "mage",
-            "mage_bow",
-            "mage_melee",
             "bow",
             "melee",
         };
@@ -282,10 +271,8 @@ namespace EnemyImbuePresets.Configuration
         public enum EnemyTypeArchetype
         {
             Mage = 0,
-            MageBow = 1,
-            MageMelee = 2,
-            Bow = 3,
-            Melee = 4
+            Bow = 1,
+            Melee = 2
         }
 
         public struct ImbueSlotConfig
@@ -315,7 +302,7 @@ namespace EnemyImbuePresets.Configuration
         public static string PresetFactionProfile = PresetProfileLore;
 
         [ModOption(name = OptionPresetEnemyTypeProfile, category = CategoryPresets, categoryOrder = 0, order = 7, defaultValueIndex = 0, valueSourceName = nameof(EnemyTypeProfilePresetProvider), tooltip = "Controls runtime enemy-type eligibility by archetype.")]
-        public static string PresetEnemyTypeProfile = PresetProfileLore;
+        public static string PresetEnemyTypeProfile = PresetEnemyTypeMageOnly;
 
         [ModOption(name = OptionPresetImbue, category = CategoryPresets, categoryOrder = 0, order = 10, defaultValueIndex = 0, valueSourceName = nameof(ImbuePresetProvider), tooltip = "Controls which imbue types each faction slot can receive.")]
         public static string PresetImbue = PresetImbueLore;
@@ -328,15 +315,11 @@ namespace EnemyImbuePresets.Configuration
 
         [ModOption(name = OptionEnemyTypeMageEligible, category = CategoryEnemyTypes, categoryOrder = 20, order = 0, defaultValueIndex = 1, tooltip = "If disabled, pure mage enemies cannot receive imbues.")]
         public static bool EnemyTypeMageEligible = true;
-        [ModOption(name = OptionEnemyTypeMageBowEligible, category = CategoryEnemyTypes, categoryOrder = 20, order = 10, defaultValueIndex = 1, tooltip = "If disabled, mage-bow hybrid enemies cannot receive imbues.")]
-        public static bool EnemyTypeMageBowEligible = true;
-        [ModOption(name = OptionEnemyTypeMageMeleeEligible, category = CategoryEnemyTypes, categoryOrder = 20, order = 20, defaultValueIndex = 1, tooltip = "If disabled, mage-melee hybrid enemies cannot receive imbues.")]
-        public static bool EnemyTypeMageMeleeEligible = true;
-        [ModOption(name = OptionEnemyTypeBowEligible, category = CategoryEnemyTypes, categoryOrder = 20, order = 30, defaultValueIndex = 0, tooltip = "If disabled, non-caster bow enemies cannot receive imbues.")]
+        [ModOption(name = OptionEnemyTypeBowEligible, category = CategoryEnemyTypes, categoryOrder = 20, order = 10, defaultValueIndex = 0, tooltip = "If disabled, non-caster bow enemies cannot receive imbues.")]
         public static bool EnemyTypeBowEligible = false;
-        [ModOption(name = OptionEnemyTypeMeleeEligible, category = CategoryEnemyTypes, categoryOrder = 20, order = 40, defaultValueIndex = 0, tooltip = "If disabled, non-caster melee enemies cannot receive imbues.")]
+        [ModOption(name = OptionEnemyTypeMeleeEligible, category = CategoryEnemyTypes, categoryOrder = 20, order = 20, defaultValueIndex = 0, tooltip = "If disabled, non-caster melee enemies cannot receive imbues.")]
         public static bool EnemyTypeMeleeEligible = false;
-        [ModOption(name = OptionEnemyTypeUncertainFallback, category = CategoryEnemyTypes, categoryOrder = 20, order = 50, defaultValueIndex = 0, valueSourceName = nameof(EnemyTypeFallbackProvider), tooltip = "How to handle enemies where runtime archetype signals are uncertain.")]
+        [ModOption(name = OptionEnemyTypeUncertainFallback, category = CategoryEnemyTypes, categoryOrder = 20, order = 30, defaultValueIndex = 0, valueSourceName = nameof(EnemyTypeFallbackProvider), tooltip = "How to handle enemies where runtime archetype signals are uncertain.")]
         public static string EnemyTypeUncertainFallbackMode = EnemyTypeFallbackMelee;
 
         [ModOption(name = OptionF01Enabled, category = CategoryF01, categoryOrder = 100, order = 0, defaultValueIndex = 1)]
@@ -537,26 +520,12 @@ namespace EnemyImbuePresets.Configuration
         public static bool EnableDiagnosticsLogging = false;
         [ModOption(name = OptionEnableVerboseLogging, category = CategoryDiagnostics, categoryOrder = 999, order = 7, defaultValueIndex = 0, tooltip = "Enable high-volume per-entity and per-state logs")]
         public static bool EnableVerboseLogging = false;
-        [ModOption(name = OptionSessionDiagnostics, category = CategoryDiagnostics, categoryOrder = 999, order = 8, defaultValueIndex = 0, tooltip = "Emit structured session diagnostics summaries even when other logs are off")]
-        public static bool SessionDiagnostics = false;
         [ModOption(name = OptionUpdateInterval, category = CategoryDiagnostics, categoryOrder = 999, order = 10, defaultValueIndex = 4, valueSourceName = nameof(UpdateIntervalProvider), interactionType = (ModOption.InteractionType)2)]
         public static float UpdateInterval = 0.25f;
         [ModOption(name = OptionRescanInterval, category = CategoryDiagnostics, categoryOrder = 999, order = 20, defaultValueIndex = 3, valueSourceName = nameof(RescanIntervalProvider), interactionType = (ModOption.InteractionType)2)]
         public static float RescanInterval = 2.0f;
 
-        [ModOption(name = OptionDumpFactions, category = CategoryDiagnosticsDumps, categoryOrder = 1000, order = 10, defaultValueIndex = 0)]
-        [ModOptionDontSave]
-        public static bool DumpFactions = false;
-        [ModOption(name = OptionDumpWaveMap, category = CategoryDiagnosticsDumps, categoryOrder = 1000, order = 20, defaultValueIndex = 0)]
-        [ModOptionDontSave]
-        public static bool DumpWaveMap = false;
-        [ModOption(name = OptionDumpState, category = CategoryDiagnosticsDumps, categoryOrder = 1000, order = 30, defaultValueIndex = 0)]
-        [ModOptionDontSave]
-        public static bool DumpState = false;
-        [ModOption(name = OptionDumpEnemyTypes, category = CategoryDiagnosticsDumps, categoryOrder = 1000, order = 40, defaultValueIndex = 0)]
-        [ModOptionDontSave]
-        public static bool DumpEnemyTypes = false;
-        [ModOption(name = OptionForceReapply, category = CategoryDiagnostics, categoryOrder = 999, order = 60, defaultValueIndex = 0)]
+        [ModOption(name = OptionForceReapply, category = CategoryDiagnostics, categoryOrder = 999, order = 30, defaultValueIndex = 0)]
         [ModOptionDontSave]
         public static bool ForceReapply = false;
 
@@ -595,13 +564,12 @@ namespace EnemyImbuePresets.Configuration
         };
 
         // Enemy-type eligibility profile writes:
-        // [0] Mage, [1] Mage Bow, [2] Mage Melee, [3] Bow, [4] Melee.
+        // [0] Mage, [1] Bow, [2] Melee.
         private static readonly bool[][] ProfileEnemyTypeValues =
         {
-            new[] { true,  true,  true,  false, false }, // Mage (casters only)
-            new[] { true,  true,  true,  true,  false }, // Mage Bow
-            new[] { true,  true,  true,  false, true  }, // Mage Melee
-            new[] { true,  true,  true,  true,  true  }  // Mage Bow Melee
+            new[] { true,  false, false }, // Mage Only
+            new[] { true,  true,  false }, // Ranged
+            new[] { true,  true,  true  }  // All
         };
 
         // Imbue preset determines which spells can appear in each slot (None = no imbue in that slot).
@@ -873,9 +841,7 @@ namespace EnemyImbuePresets.Configuration
 
         public static bool IsCasterArchetype(EnemyTypeArchetype archetype)
         {
-            return archetype == EnemyTypeArchetype.Mage ||
-                   archetype == EnemyTypeArchetype.MageBow ||
-                   archetype == EnemyTypeArchetype.MageMelee;
+            return archetype == EnemyTypeArchetype.Mage;
         }
 
         public static int EnemyTypeArchetypeCount()
@@ -1100,7 +1066,6 @@ namespace EnemyImbuePresets.Configuration
             hash = CombineHash(hash, EnableBasicLogging ? 1 : 0);
             hash = CombineHash(hash, EnableDiagnosticsLogging ? 1 : 0);
             hash = CombineHash(hash, EnableVerboseLogging ? 1 : 0);
-            hash = CombineHash(hash, SessionDiagnostics ? 1 : 0);
             hash = CombineHash(hash, PercentHash(UpdateInterval * 100f));
             hash = CombineHash(hash, PercentHash(RescanInterval * 100f));
 
@@ -1209,8 +1174,6 @@ namespace EnemyImbuePresets.Configuration
             bool changed = false;
             changed |= SetEnemyTypeEligibility(
                 mageEligible: values[(int)EnemyTypeArchetype.Mage],
-                mageBowEligible: values[(int)EnemyTypeArchetype.MageBow],
-                mageMeleeEligible: values[(int)EnemyTypeArchetype.MageMelee],
                 bowEligible: values[(int)EnemyTypeArchetype.Bow],
                 meleeEligible: values[(int)EnemyTypeArchetype.Melee]);
             return changed;
@@ -1373,22 +1336,12 @@ namespace EnemyImbuePresets.Configuration
             return string.IsNullOrWhiteSpace(fallbackName) ? "Faction " + factionId : fallbackName;
         }
 
-        public static bool SetEnemyTypeEligibility(bool mageEligible, bool mageBowEligible, bool mageMeleeEligible, bool bowEligible, bool meleeEligible)
+        public static bool SetEnemyTypeEligibility(bool mageEligible, bool bowEligible, bool meleeEligible)
         {
             bool changed = false;
             if (EnemyTypeMageEligible != mageEligible)
             {
                 EnemyTypeMageEligible = mageEligible;
-                changed = true;
-            }
-            if (EnemyTypeMageBowEligible != mageBowEligible)
-            {
-                EnemyTypeMageBowEligible = mageBowEligible;
-                changed = true;
-            }
-            if (EnemyTypeMageMeleeEligible != mageMeleeEligible)
-            {
-                EnemyTypeMageMeleeEligible = mageMeleeEligible;
                 changed = true;
             }
             if (EnemyTypeBowEligible != bowEligible)
@@ -1410,10 +1363,6 @@ namespace EnemyImbuePresets.Configuration
             {
                 case EnemyTypeArchetype.Mage:
                     return EnemyTypeMageEligible;
-                case EnemyTypeArchetype.MageBow:
-                    return EnemyTypeMageBowEligible;
-                case EnemyTypeArchetype.MageMelee:
-                    return EnemyTypeMageMeleeEligible;
                 case EnemyTypeArchetype.Bow:
                     return EnemyTypeBowEligible;
                 case EnemyTypeArchetype.Melee:
@@ -1430,7 +1379,7 @@ namespace EnemyImbuePresets.Configuration
 
         public static bool IsAnyCasterEnemyTypeEligible()
         {
-            return EnemyTypeMageEligible || EnemyTypeMageBowEligible || EnemyTypeMageMeleeEligible;
+            return EnemyTypeMageEligible;
         }
 
         public static bool IsAnyNonCasterEnemyTypeEligible()
@@ -1440,32 +1389,29 @@ namespace EnemyImbuePresets.Configuration
 
         public static string GetEnemyTypeEligibilityModeLabel()
         {
-            bool anyCaster = IsAnyCasterEnemyTypeEligible();
-            bool anyNonCaster = IsAnyNonCasterEnemyTypeEligible();
-
-            if (anyCaster && anyNonCaster)
-            {
-                bool allEnabled = true;
-                for (int i = 0; i < EnemyTypeArchetypeCount(); i++)
-                {
-                    if (!GetEnemyTypeEligibility((EnemyTypeArchetype)i))
-                    {
-                        allEnabled = false;
-                        break;
-                    }
-                }
-
-                return allEnabled ? "all" : "mixed";
-            }
-
-            if (anyCaster && !anyNonCaster)
+            if (EnemyTypeMageEligible && !EnemyTypeBowEligible && !EnemyTypeMeleeEligible)
             {
                 return "casters_only";
             }
 
-            if (!anyCaster && anyNonCaster)
+            if (EnemyTypeMageEligible && EnemyTypeBowEligible && !EnemyTypeMeleeEligible)
+            {
+                return "ranged";
+            }
+
+            if (EnemyTypeMageEligible && EnemyTypeBowEligible && EnemyTypeMeleeEligible)
+            {
+                return "all";
+            }
+
+            if (!EnemyTypeMageEligible && IsAnyNonCasterEnemyTypeEligible())
             {
                 return "noncasters_only";
+            }
+
+            if (EnemyTypeMageEligible || IsAnyNonCasterEnemyTypeEligible())
+            {
+                return "mixed";
             }
 
             return "none";
@@ -1475,8 +1421,6 @@ namespace EnemyImbuePresets.Configuration
         {
             return
                 "mage=" + EnemyTypeMageEligible +
-                ", mageBow=" + EnemyTypeMageBowEligible +
-                ", mageMelee=" + EnemyTypeMageMeleeEligible +
                 ", bow=" + EnemyTypeBowEligible +
                 ", melee=" + EnemyTypeMeleeEligible +
                 ", uncertainFallback=" + GetEnemyTypeFallbackMode();
@@ -1599,11 +1543,9 @@ namespace EnemyImbuePresets.Configuration
         {
             return new[]
             {
-                new ModOptionString("Mage", PresetProfileLore),
-                new ModOptionString("Mage Bow", PresetProfileFrontier),
-                new ModOptionString("Mage Melee", PresetProfileWarfront),
-                new ModOptionString("Mage Bow Melee", PresetProfileHighMagic),
-                new ModOptionString("Random", PresetProfileRandom)
+                new ModOptionString("Casters", PresetEnemyTypeMageOnly),
+                new ModOptionString("Ranged", PresetEnemyTypeRanged),
+                new ModOptionString("All", PresetEnemyTypeAll)
             };
         }
 
@@ -1693,47 +1635,50 @@ namespace EnemyImbuePresets.Configuration
         {
             if (string.IsNullOrWhiteSpace(preset))
             {
-                return PresetProfileLore;
+                return PresetEnemyTypeMageOnly;
             }
 
             string trimmed = preset.Trim();
 
-            if (string.Equals(trimmed, PresetProfileLore, StringComparison.OrdinalIgnoreCase) ||
+            if (string.Equals(trimmed, PresetEnemyTypeMageOnly, StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(trimmed, PresetProfileLore, StringComparison.OrdinalIgnoreCase) ||
                 trimmed.StartsWith("Lore Friendly", StringComparison.OrdinalIgnoreCase) ||
                 string.Equals(trimmed, "Default", StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(trimmed, "Mage", StringComparison.OrdinalIgnoreCase))
+                string.Equals(trimmed, "Mage", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(trimmed, "Mage Only", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(trimmed, "Casters", StringComparison.OrdinalIgnoreCase))
             {
-                return PresetProfileLore;
+                return PresetEnemyTypeMageOnly;
             }
-            if (string.Equals(trimmed, PresetProfileFrontier, StringComparison.OrdinalIgnoreCase) ||
+            if (string.Equals(trimmed, PresetEnemyTypeRanged, StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(trimmed, PresetProfileFrontier, StringComparison.OrdinalIgnoreCase) ||
                 trimmed.StartsWith("Frontier Pressure", StringComparison.OrdinalIgnoreCase) ||
                 string.Equals(trimmed, "Mage Bow", StringComparison.OrdinalIgnoreCase) ||
                 string.Equals(trimmed, "Open", StringComparison.OrdinalIgnoreCase))
             {
-                return PresetProfileFrontier;
+                return PresetEnemyTypeRanged;
             }
-            if (string.Equals(trimmed, PresetProfileWarfront, StringComparison.OrdinalIgnoreCase) ||
+            if (string.Equals(trimmed, PresetEnemyTypeAll, StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(trimmed, PresetProfileWarfront, StringComparison.OrdinalIgnoreCase) ||
                 trimmed.StartsWith("Warfront Arcana", StringComparison.OrdinalIgnoreCase) ||
                 string.Equals(trimmed, "Mage Melee", StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(trimmed, "Open+", StringComparison.OrdinalIgnoreCase))
-            {
-                return PresetProfileWarfront;
-            }
-            if (string.Equals(trimmed, PresetProfileHighMagic, StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(trimmed, "Open+", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(trimmed, PresetProfileHighMagic, StringComparison.OrdinalIgnoreCase) ||
                 trimmed.StartsWith("High Magic Conflict", StringComparison.OrdinalIgnoreCase) ||
                 string.Equals(trimmed, "Mage Bow Melee", StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(trimmed, "Open++", StringComparison.OrdinalIgnoreCase))
+                string.Equals(trimmed, "Open++", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(trimmed, "All", StringComparison.OrdinalIgnoreCase))
             {
-                return PresetProfileHighMagic;
+                return PresetEnemyTypeAll;
             }
             if (string.Equals(trimmed, PresetProfileRandom, StringComparison.OrdinalIgnoreCase) ||
                 trimmed.StartsWith("Randomized", StringComparison.OrdinalIgnoreCase) ||
                 string.Equals(trimmed, "Random", StringComparison.OrdinalIgnoreCase))
             {
-                return PresetProfileRandom;
+                return PresetEnemyTypeAll;
             }
 
-            return NormalizeFactionProfilePreset(trimmed);
+            return PresetEnemyTypeMageOnly;
         }
 
         public static string NormalizeEnemyTypeFallbackMode(string mode)
@@ -1772,7 +1717,7 @@ namespace EnemyImbuePresets.Configuration
         {
             return string.Equals(
                 NormalizeEnemyTypeProfilePreset(PresetEnemyTypeProfile),
-                PresetProfileLore,
+                PresetEnemyTypeMageOnly,
                 StringComparison.Ordinal);
         }
 
@@ -1958,24 +1903,14 @@ namespace EnemyImbuePresets.Configuration
         {
             string normalized = NormalizeEnemyTypeProfilePreset(preset);
 
-            if (string.Equals(normalized, PresetProfileFrontier, StringComparison.Ordinal))
+            if (string.Equals(normalized, PresetEnemyTypeRanged, StringComparison.Ordinal))
             {
                 return CopyEnemyTypeArray(ProfileEnemyTypeValues[1]);
             }
 
-            if (string.Equals(normalized, PresetProfileWarfront, StringComparison.Ordinal))
+            if (string.Equals(normalized, PresetEnemyTypeAll, StringComparison.Ordinal))
             {
                 return CopyEnemyTypeArray(ProfileEnemyTypeValues[2]);
-            }
-
-            if (string.Equals(normalized, PresetProfileHighMagic, StringComparison.Ordinal))
-            {
-                return CopyEnemyTypeArray(ProfileEnemyTypeValues[3]);
-            }
-
-            if (string.Equals(normalized, PresetProfileRandom, StringComparison.Ordinal))
-            {
-                return BuildRandomEnemyTypeEnabledArray();
             }
 
             return CopyEnemyTypeArray(ProfileEnemyTypeValues[0]);

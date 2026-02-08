@@ -8,7 +8,7 @@ namespace EnemyImbuePresets.Core
         private const string Prefix = "[EIP] ";
 
         public static bool DiagnosticsEnabled => EIPModOptions.EnableDiagnosticsLogging || VerboseEnabled;
-        public static bool StructuredDiagnosticsEnabled => DiagnosticsEnabled || EIPModOptions.SessionDiagnostics;
+        public static bool StructuredDiagnosticsEnabled => DiagnosticsEnabled;
         public static bool VerboseEnabled => EIPModOptions.EnableVerboseLogging;
         public static bool BasicEnabled => EIPModOptions.EnableBasicLogging || DiagnosticsEnabled;
 

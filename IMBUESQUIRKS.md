@@ -52,16 +52,16 @@
 
 - **Issue**: One-off per-creature logs are hard to compare across long playthroughs when tuning presets.
 - **Context**: Manual inspection misses aggregate patterns (for example, why most enemies are skipped or why transfer failures spike).
-- **Solution/Workaround**: Use periodic `diag evt=summary` logs with `Session Diagnostics` enabled; add `Diagnostics Logs` or `Verbose Logs` only when deeper traces are required.
+- **Solution/Workaround**: Use periodic `diag evt=summary` logs with `Diagnostics Logs` enabled; add `Verbose Logs` only when deeper traces are required.
 
 ## Entry 10
 
 - **Issue**: Enemy-type profile behavior can become confusing if runtime classification and UI toggles use different mental models.
-- **Context**: The current model uses five archetypes (`Mage`, `Mage Bow`, `Mage Melee`, `Bow`, `Melee`) and presets batch-write those toggles; lore/default caster behavior depends on caster archetypes, not a legacy boolean.
+- **Context**: The current model uses three archetypes (`Mage`, `Bow`, `Melee`) and presets batch-write those toggles (`Casters`, `Ranged`, `All`); lore/default caster behavior depends on caster archetypes, not a legacy boolean.
 - **Solution/Workaround**: Keep classification, preset matrices, sync logging, and docs/XLSX generator aligned to the same five-archetype vocabulary whenever enemy-type logic changes.
 
 ## Entry 11
 
 - **Issue**: Runtime enemy archetypes can oscillate during weapon swaps or spawn initialization, causing noisy rerolls.
 - **Context**: Archer/melee hints can appear a frame or two before/after caster signals, especially during hand-item transitions.
-- **Solution/Workaround**: Keep a short archetype stabilization cache window, expose uncertain fallback mode (`Treat As Melee` vs `Skip Enemy`), and use `Dump Enemy Type Detection` to inspect evidence before changing profile defaults.
+- **Solution/Workaround**: Keep a short archetype stabilization cache window, expose uncertain fallback mode (`Treat As Melee` vs `Skip Enemy`), and use targeted verbose session logs before changing profile defaults.

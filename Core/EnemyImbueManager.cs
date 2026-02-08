@@ -512,14 +512,6 @@ namespace EnemyImbuePresets.Core
 
             if (isCaster)
             {
-                if (isArcher)
-                {
-                    return EIPModOptions.EnemyTypeArchetype.MageBow;
-                }
-                if (isMelee)
-                {
-                    return EIPModOptions.EnemyTypeArchetype.MageMelee;
-                }
                 return EIPModOptions.EnemyTypeArchetype.Mage;
             }
 
@@ -534,10 +526,6 @@ namespace EnemyImbuePresets.Core
             {
                 case EIPModOptions.EnemyTypeArchetype.Mage:
                     return evidence.HasCasterEvidence;
-                case EIPModOptions.EnemyTypeArchetype.MageBow:
-                    return evidence.HasCasterEvidence && evidence.HasArcherEvidence;
-                case EIPModOptions.EnemyTypeArchetype.MageMelee:
-                    return evidence.HasCasterEvidence && evidence.HasMeleeEvidence;
                 case EIPModOptions.EnemyTypeArchetype.Bow:
                     return evidence.HasArcherEvidence;
                 case EIPModOptions.EnemyTypeArchetype.Melee:
@@ -1852,223 +1840,10 @@ namespace EnemyImbuePresets.Core
 
         private void HandleDiagnostics()
         {
-            if (EIPModOptions.DumpFactions)
-            {
-                EIPModOptions.DumpFactions = false;
-                DumpFactions();
-            }
-
-            if (EIPModOptions.DumpState)
-            {
-                EIPModOptions.DumpState = false;
-                DumpState();
-            }
-
-            if (EIPModOptions.DumpEnemyTypes)
-            {
-                EIPModOptions.DumpEnemyTypes = false;
-                DumpEnemyTypeDetection();
-            }
-
-            if (EIPModOptions.DumpWaveMap)
-            {
-                EIPModOptions.DumpWaveMap = false;
-                DumpWaveFactionMap();
-            }
-
             if (EIPModOptions.ForceReapply)
             {
                 EIPModOptions.ForceReapply = false;
                 ForceReapply();
-            }
-        }
-
-        private void DumpFactions()
-        {
-            List<GameData.Faction> factions = Catalog.gameData?.factions;
-            if (factions == null || factions.Count == 0)
-            {
-                EIPLog.Warn("No factions available from Catalog.gameData.");
-                return;
-            }
-
-            EIPLog.Info("Detected factions: " + factions.Count);
-            for (int i = 0; i < factions.Count; i++)
-            {
-                GameData.Faction faction = factions[i];
-                if (faction == null)
-                {
-                    continue;
-                }
-
-                EIPLog.Info("Faction " + faction.id + " -> " + EIPModOptions.GetFactionName(faction.id, faction.name));
-            }
-
-            for (int profileIndex = 1; profileIndex <= EIPModOptions.FactionCount; profileIndex++)
-            {
-                int mappedFactionId = EIPModOptions.GetResolvedFactionId(profileIndex);
-                EIPModOptions.FactionProfile profile = EIPModOptions.GetFactionProfileByIndex(profileIndex);
-
-                EIPLog.Info(
-                    "Profile " + profileIndex.ToString("D2") +
-                    " " + EIPModOptions.GetFactionShortName(profileIndex) +
-                    " -> faction " + mappedFactionId +
-                    " (" + EIPModOptions.GetFactionName(mappedFactionId) + ")" +
-                    " enabled=" + profile.Enabled);
-
-                EIPLog.Info("  Slot1 spell=" + profile.Slot1.SpellId + " chance=" + profile.Slot1.ChancePercent.ToString("F1") + "% strength=" + profile.Slot1.StrengthPercent.ToString("F0") + "%");
-                EIPLog.Info("  Slot2 spell=" + profile.Slot2.SpellId + " chance=" + profile.Slot2.ChancePercent.ToString("F1") + "% strength=" + profile.Slot2.StrengthPercent.ToString("F0") + "%");
-                EIPLog.Info("  Slot3 spell=" + profile.Slot3.SpellId + " chance=" + profile.Slot3.ChancePercent.ToString("F1") + "% strength=" + profile.Slot3.StrengthPercent.ToString("F0") + "%");
-            }
-        }
-
-        private void DumpState()
-        {
-            EIPLog.Info("Tracked creatures: " + tracked.Count);
-            foreach (KeyValuePair<int, TrackedCreatureState> pair in tracked)
-            {
-                TrackedCreatureState state = pair.Value;
-                if (state == null || state.Creature == null)
-                {
-                    continue;
-                }
-
-                EIPLog.Info(
-                    "State " + BuildCreatureLabel(state.Creature) +
-                    " enemyType=" + EIPModOptions.GetEnemyTypeDisplayName(state.EnemyArchetype) +
-                    " slot=" + (state.RollPassed ? state.SelectedSlot.ToString() : "none") +
-                    " roll=" + state.RollPercent.ToString("F1") +
-                    " result=" + (state.RollPassed ? "pass" : "fail") +
-                    (state.RollPassed
-                        ? " chance=" + state.SelectedChancePercent.ToString("F1") +
-                          " spell=" + state.BaseSpellId +
-                          " strength=" + (state.StrengthRatio * 100f).ToString("F0") + "%"
-                        : string.Empty));
-            }
-        }
-
-        private void DumpEnemyTypeDetection()
-        {
-            float now = Time.unscaledTime;
-            EIPLog.Info(
-                "Enemy type detection dump: tracked=" + tracked.Count +
-                " fallback=" + EIPModOptions.GetEnemyTypeFallbackDisplayLabel() +
-                " stabilizeWindowSec=" + EnemyTypeStabilizeSeconds.ToString("F2"));
-
-            int logged = 0;
-            foreach (KeyValuePair<int, TrackedCreatureState> pair in tracked)
-            {
-                TrackedCreatureState state = pair.Value;
-                if (state == null || !IsEligibleCreature(state.Creature))
-                {
-                    continue;
-                }
-
-                EnemyTypeEvidence evidence = GatherEnemyTypeEvidence(state.Creature, now);
-                EIPModOptions.EnemyTypeArchetype rawArchetype = ResolveArchetypeFromEvidence(evidence, out bool uncertain);
-                bool resolved = TryResolveEnemyTypeArchetype(state.Creature, now, out EIPModOptions.EnemyTypeArchetype resolvedArchetype, out bool uncertainSkipped, out bool stabilizedFromCache);
-
-                EIPLog.Info(
-                    "EnemyType " + BuildCreatureLabel(state.Creature) +
-                    " tracked=" + EIPModOptions.GetEnemyTypeDisplayName(state.EnemyArchetype) +
-                    " raw=" + EIPModOptions.GetEnemyTypeDisplayName(rawArchetype) +
-                    " resolved=" + (resolved ? EIPModOptions.GetEnemyTypeDisplayName(resolvedArchetype) : "SKIP") +
-                    " uncertain=" + uncertain +
-                    " stabilized=" + stabilizedFromCache +
-                    " skipOnUncertain=" + uncertainSkipped +
-                    " signals={" + BuildEnemyTypeEvidenceSummary(evidence) + "}");
-                logged++;
-            }
-
-            if (logged == 0)
-            {
-                EIPLog.Warn("Enemy type detection dump found no eligible tracked creatures.");
-            }
-        }
-
-        private void DumpWaveFactionMap()
-        {
-            List<WaveData> waves;
-            try
-            {
-                waves = Catalog.GetDataList<WaveData>();
-            }
-            catch
-            {
-                waves = null;
-            }
-
-            if (waves == null || waves.Count == 0)
-            {
-                EIPLog.Warn("No WaveData entries available to build a wave-faction map.");
-                return;
-            }
-
-            var map = new Dictionary<int, HashSet<string>>();
-            for (int i = 0; i < waves.Count; i++)
-            {
-                WaveData wave = waves[i];
-                if (wave == null || wave.factions == null || wave.factions.Count == 0)
-                {
-                    continue;
-                }
-
-                string waveLabel = !string.IsNullOrWhiteSpace(wave.title) ? wave.title : wave.id;
-                if (string.IsNullOrWhiteSpace(waveLabel))
-                {
-                    continue;
-                }
-
-                for (int j = 0; j < wave.factions.Count; j++)
-                {
-                    WaveData.WaveFaction faction = wave.factions[j];
-                    if (faction == null)
-                    {
-                        continue;
-                    }
-
-                    if (!map.TryGetValue(faction.factionID, out HashSet<string> entries))
-                    {
-                        entries = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-                        map[faction.factionID] = entries;
-                    }
-
-                    entries.Add(waveLabel);
-                }
-            }
-
-            if (map.Count == 0)
-            {
-                EIPLog.Warn("Wave-faction map is empty.");
-                return;
-            }
-
-            var factionIds = new List<int>(map.Keys);
-            factionIds.Sort();
-            EIPLog.Info("Wave-faction map:");
-
-            for (int i = 0; i < factionIds.Count; i++)
-            {
-                int factionId = factionIds[i];
-                List<string> labels = new List<string>(map[factionId]);
-                labels.Sort(StringComparer.OrdinalIgnoreCase);
-
-                int max = Mathf.Min(8, labels.Count);
-                string joined = string.Empty;
-                for (int j = 0; j < max; j++)
-                {
-                    if (j > 0)
-                    {
-                        joined += ", ";
-                    }
-                    joined += labels[j];
-                }
-                if (labels.Count > max)
-                {
-                    joined += ", ...";
-                }
-
-                EIPLog.Info("Faction " + factionId + " (" + EIPModOptions.GetFactionName(factionId) + ") waves: " + joined);
             }
         }
 
@@ -2093,28 +1868,6 @@ namespace EnemyImbuePresets.Core
             }
 
             EIPLog.Info("Force reapply finished. creatures=" + applied);
-        }
-
-        private static string BuildEnemyTypeEvidenceSummary(EnemyTypeEvidence evidence)
-        {
-            return
-                "caster[cache=" + BoolToken(evidence.Caster.CachedPositive) +
-                ",retryBlock=" + BoolToken(evidence.Caster.NegativeRetryBlocked) +
-                ",identity=" + BoolToken(evidence.Caster.ByIdentity) +
-                ",held=" + BoolToken(evidence.Caster.ByHeldItems) +
-                ",components=" + BoolToken(evidence.Caster.ByComponents) +
-                "],archer[spawner=" + BoolToken(evidence.ArcherBySpawner) +
-                ",held=" + BoolToken(evidence.ArcherByHeldItems) +
-                ",keyword=" + BoolToken(evidence.ArcherByKeywords) +
-                "],melee[spawner=" + BoolToken(evidence.MeleeBySpawner) +
-                ",held=" + BoolToken(evidence.MeleeByHeldItems) +
-                ",keyword=" + BoolToken(evidence.MeleeByKeywords) +
-                "]";
-        }
-
-        private static string BoolToken(bool value)
-        {
-            return value ? "1" : "0";
         }
 
         private static string BuildCreatureLabel(Creature creature)

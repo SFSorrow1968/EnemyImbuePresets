@@ -62,8 +62,7 @@ namespace EnemyImbuePresets.Core
             EIPLog.Diag(
                 "diag evt=session_start run=" + runId +
                 " assignmentHash=" + Configuration.EIPModOptions.GetAssignmentStateHash() +
-                " presetHash=" + Configuration.EIPModOptions.GetPresetSelectionHash() +
-                " sessionDiagnostics=" + Configuration.EIPModOptions.SessionDiagnostics);
+                " presetHash=" + Configuration.EIPModOptions.GetPresetSelectionHash());
         }
 
         public static void Shutdown()

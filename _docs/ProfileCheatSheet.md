@@ -12,18 +12,16 @@
 
 ## Enemy Type Profile Preset
 
-| Preset | Mage | Mage Bow | Mage Melee | Bow | Melee |
-| --- | --- | --- | --- | --- | --- |
-| `Mage` | On | On | On | Off | Off |
-| `Mage Bow` | On | On | On | On | Off |
-| `Mage Melee` | On | On | On | Off | On |
-| `Mage Bow Melee` | On | On | On | On | On |
-| `Random` | Randomized each apply | Randomized each apply | Randomized each apply | Randomized each apply | Randomized each apply |
+| Preset | Mage | Bow | Melee |
+| --- | --- | --- | --- |
+| `Casters` | On | Off | Off |
+| `Ranged` | On | On | Off |
+| `All` | On | On | On |
 
 ## Notes
 
 - Faction collapsibles are the source of truth; presets batch-write those values.
-- In `Mage` enemy-type profile mode, caster spell mirroring is enabled by default.
+- In `Casters` enemy-type profile mode, caster spell mirroring is enabled by default.
 - `Uncertain Enemy Type Fallback`:
   - `Treat As Melee` keeps uncertain enemies eligible under melee rules.
   - `Skip Enemy` blocks uncertain enemies until stronger signals appear.

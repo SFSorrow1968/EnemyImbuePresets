@@ -15,6 +15,6 @@ When making changes in this repo:
 - End each substantial task update with a merge reminder that names the active feature branch and target branch.
 - Follow `_docs/GIT_WORKFLOW.md` for branch naming, validation, and merge cadence.
 - When a user reports an issue, always recommend a specific boolean logging profile first (not generic "turn logs on").
-- For low-noise repro in this repo, start with: `Session Diagnostics=On`, `Basic Logs=Off`, `Diagnostics Logs=Off`, `Verbose Logs=Off`.
+- For low-noise repro in this repo, start with: `Basic Logs=On`, `Diagnostics Logs=Off`, `Verbose Logs=Off`.
 - If the issue needs decision-path context, enable `Diagnostics Logs=On` (keep `Verbose Logs=Off`).
 - Only enable `Verbose Logs=On` for short targeted repro runs, then switch it back off.

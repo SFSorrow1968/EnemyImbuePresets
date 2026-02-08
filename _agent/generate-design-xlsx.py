@@ -333,10 +333,6 @@ def add_menu_workbook() -> None:
         ["1003", "Advanced", "Imbue Update Interval", "Dropdown", "0.05s..1.00s", "0.25s", "No", "Performance/response tradeoff"],
         ["1004", "Advanced", "Enemy Rescan Interval", "Dropdown", "0.50s..5.00s", "2.00s", "No", "Tracking refresh interval"],
         ["1005", "Advanced", "Force Reapply", "Button", "False/True", "False", "No", "One-shot reapply action"],
-        ["1010", "Advanced - Dumps", "Dump Factions", "Button", "False/True", "False", "No", "One-shot dump action"],
-        ["1011", "Advanced - Dumps", "Dump Wave-Faction Map", "Button", "False/True", "False", "No", "One-shot dump action"],
-        ["1012", "Advanced - Dumps", "Dump State", "Button", "False/True", "False", "No", "One-shot dump action"],
-        ["1013", "Advanced - Dumps", "Dump Enemy Type Detection", "Button", "False/True", "False", "No", "One-shot dump action"],
     ]
     for row in diag_rows:
         ws.append(row)
