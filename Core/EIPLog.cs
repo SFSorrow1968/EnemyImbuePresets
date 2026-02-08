@@ -16,6 +16,7 @@ namespace EnemyImbuePresets.Core
         private const string Prefix = "[EIP] ";
 
         public static bool DiagnosticsEnabled => GetCurrentLevel() >= EIPLogLevel.Diagnostics;
+        public static bool StructuredDiagnosticsEnabled => DiagnosticsEnabled || EIPModOptions.SessionDiagnostics;
         public static bool VerboseEnabled => GetCurrentLevel() >= EIPLogLevel.Verbose;
 
         public static void Info(string message, bool verboseOnly = false)
@@ -66,6 +67,21 @@ namespace EnemyImbuePresets.Core
             }
 
             Debug.LogError(Prefix + message);
+        }
+
+        public static void Diag(string message, bool verboseOnly = false)
+        {
+            if (string.IsNullOrWhiteSpace(message) || !StructuredDiagnosticsEnabled)
+            {
+                return;
+            }
+
+            if (verboseOnly && !VerboseEnabled)
+            {
+                return;
+            }
+
+            Debug.Log(Prefix + message);
         }
 
         private static EIPLogLevel GetCurrentLevel()

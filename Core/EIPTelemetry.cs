@@ -59,13 +59,11 @@ namespace EnemyImbuePresets.Core
             ResetInterval();
             ResetTotals();
 
-            if (EIPLog.DiagnosticsEnabled)
-            {
-                EIPLog.Info(
-                    "diag evt=session_start run=" + runId +
-                    " assignmentHash=" + Configuration.EIPModOptions.GetAssignmentStateHash() +
-                    " presetHash=" + Configuration.EIPModOptions.GetPresetSelectionHash());
-            }
+            EIPLog.Diag(
+                "diag evt=session_start run=" + runId +
+                " assignmentHash=" + Configuration.EIPModOptions.GetAssignmentStateHash() +
+                " presetHash=" + Configuration.EIPModOptions.GetPresetSelectionHash() +
+                " sessionDiagnostics=" + Configuration.EIPModOptions.SessionDiagnostics);
         }
 
         public static void Shutdown()
@@ -77,13 +75,10 @@ namespace EnemyImbuePresets.Core
 
             EmitSummary(force: true);
             EmitSessionTotals();
-            if (EIPLog.DiagnosticsEnabled)
-            {
-                EIPLog.Info(
-                    "diag evt=session_end run=" + runId +
-                    " uptimeSec=" + Mathf.Max(0f, Time.unscaledTime - sessionStartTime).ToString("F1") +
-                    " summaryCount=" + summaryCount);
-            }
+            EIPLog.Diag(
+                "diag evt=session_end run=" + runId +
+                " uptimeSec=" + Mathf.Max(0f, Time.unscaledTime - sessionStartTime).ToString("F1") +
+                " summaryCount=" + summaryCount);
             initialized = false;
         }
 
@@ -108,14 +103,11 @@ namespace EnemyImbuePresets.Core
             configRefreshes++;
             totalConfigRefreshes++;
 
-            if (EIPLog.DiagnosticsEnabled)
-            {
-                EIPLog.Info(
-                    "diag evt=config_refresh run=" + runId +
-                    " prevHash=" + previousHash +
-                    " newHash=" + currentHash,
-                    verboseOnly: true);
-            }
+            EIPLog.Diag(
+                "diag evt=config_refresh run=" + runId +
+                " prevHash=" + previousHash +
+                " newHash=" + currentHash,
+                verboseOnly: true);
         }
 
         public static void RecordTrackSkip(string reason, bool fromSpawnEvent)
@@ -319,29 +311,26 @@ namespace EnemyImbuePresets.Core
                 ? (trackRollApplied * 100f) / trackEvaluations
                 : 0f;
 
-            if (EIPLog.DiagnosticsEnabled)
-            {
-                EIPLog.Info(
-                    "diag evt=summary run=" + runId +
-                    " intervalSec=" + SummaryIntervalSeconds.ToString("F0") +
-                    " trackEval=" + trackEvaluations +
-                    " trackReuse=" + trackReused +
-                    " apply=" + trackRollApplied +
-                    " skip=" + trackRollSkipped +
-                    " applyRate=" + applyRate.ToString("F1") + "%" +
-                    " spawnEval=" + spawnEvaluations +
-                    " updateEval=" + updateEvaluations +
-                    " cfgRefresh=" + configRefreshes +
-                    " itemWrites=" + itemWrites +
-                    " itemClears=" + itemClears +
-                    " transferFail=" + transferFailures +
-                    " applyAttempt=" + applyAttempts +
-                    " applyChanged=" + applyChanged +
-                    " applyNoChange=" + applyNoChange +
-                    " applyNoItems=" + applyNoHeldItems +
-                    " casterOverride=" + casterSpellOverrides +
-                    " topSkipReasons=" + FormatTop(skipReasonsInterval));
-            }
+            EIPLog.Diag(
+                "diag evt=summary run=" + runId +
+                " intervalSec=" + SummaryIntervalSeconds.ToString("F0") +
+                " trackEval=" + trackEvaluations +
+                " trackReuse=" + trackReused +
+                " apply=" + trackRollApplied +
+                " skip=" + trackRollSkipped +
+                " applyRate=" + applyRate.ToString("F1") + "%" +
+                " spawnEval=" + spawnEvaluations +
+                " updateEval=" + updateEvaluations +
+                " cfgRefresh=" + configRefreshes +
+                " itemWrites=" + itemWrites +
+                " itemClears=" + itemClears +
+                " transferFail=" + transferFailures +
+                " applyAttempt=" + applyAttempts +
+                " applyChanged=" + applyChanged +
+                " applyNoChange=" + applyNoChange +
+                " applyNoItems=" + applyNoHeldItems +
+                " casterOverride=" + casterSpellOverrides +
+                " topSkipReasons=" + FormatTop(skipReasonsInterval));
 
             ResetInterval();
         }
@@ -353,30 +342,38 @@ namespace EnemyImbuePresets.Core
                 ? (totalTrackRollApplied * 100f) / totalTrackEvaluations
                 : 0f;
 
-            if (EIPLog.DiagnosticsEnabled)
-            {
-                EIPLog.Info(
-                    "diag evt=session_totals run=" + runId +
-                    " uptimeSec=" + uptime.ToString("F1") +
-                    " summaryCount=" + summaryCount +
-                    " trackEval=" + totalTrackEvaluations +
-                    " trackReuse=" + totalTrackReused +
-                    " apply=" + totalTrackRollApplied +
-                    " skip=" + totalTrackRollSkipped +
-                    " applyRate=" + applyRate.ToString("F1") + "%" +
-                    " spawnEval=" + totalSpawnEvaluations +
-                    " updateEval=" + totalUpdateEvaluations +
-                    " cfgRefresh=" + totalConfigRefreshes +
-                    " itemWrites=" + totalItemWrites +
-                    " itemClears=" + totalItemClears +
-                    " transferFail=" + totalTransferFailures +
-                    " applyAttempt=" + totalApplyAttempts +
-                    " applyChanged=" + totalApplyChanged +
-                    " applyNoChange=" + totalApplyNoChange +
-                    " applyNoItems=" + totalApplyNoHeldItems +
-                    " casterOverride=" + totalCasterSpellOverrides +
-                    " topSkipReasons=" + FormatTop(skipReasonsTotal));
-            }
+            float skipRate = totalTrackEvaluations > 0
+                ? (totalTrackRollSkipped * 100f) / totalTrackEvaluations
+                : 0f;
+
+            EIPLog.Diag(
+                "diag evt=session_totals run=" + runId +
+                " uptimeSec=" + uptime.ToString("F1") +
+                " summaryCount=" + summaryCount +
+                " trackEval=" + totalTrackEvaluations +
+                " trackReuse=" + totalTrackReused +
+                " apply=" + totalTrackRollApplied +
+                " skip=" + totalTrackRollSkipped +
+                " applyRate=" + applyRate.ToString("F1") + "%" +
+                " spawnEval=" + totalSpawnEvaluations +
+                " updateEval=" + totalUpdateEvaluations +
+                " cfgRefresh=" + totalConfigRefreshes +
+                " itemWrites=" + totalItemWrites +
+                " itemClears=" + totalItemClears +
+                " transferFail=" + totalTransferFailures +
+                " applyAttempt=" + totalApplyAttempts +
+                " applyChanged=" + totalApplyChanged +
+                " applyNoChange=" + totalApplyNoChange +
+                " applyNoItems=" + totalApplyNoHeldItems +
+                " casterOverride=" + totalCasterSpellOverrides +
+                " topSkipReasons=" + FormatTop(skipReasonsTotal));
+
+            EIPLog.Diag(
+                "diag evt=session_kpi run=" + runId +
+                " applyRate=" + applyRate.ToString("F1") + "%" +
+                " skipRate=" + skipRate.ToString("F1") + "%" +
+                " transferFail=" + totalTransferFailures +
+                " applyNoItems=" + totalApplyNoHeldItems);
         }
 
         private static void ResetInterval()
