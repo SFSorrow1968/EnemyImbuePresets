@@ -308,20 +308,22 @@ namespace EnemyImbuePresets.Core
                 return;
             }
 
-            EIPLog.Info(
-                "Preset batch wrote faction collapsible values: " +
-                "factionProfile=" + factionProfilePreset +
-                ", enemyTypeProfile=" + enemyTypeProfilePreset +
-                ", " +
-                "imbue=" + imbuePreset +
-                ", chance=" + chancePreset +
-                ", strength=" + strengthPreset +
-                ", enemyTypes={" + EIPModOptions.GetEnemyTypeEligibilitySummary() + "}" +
-                ", eligibilityMode=" + GetEligibilityModeLabel() +
-                ", valuesChanged=" + valuesChanged +
-                ", uiSynced=" + uiChanged +
-                ", force=" + force,
-                verboseOnly: !valuesChanged && !uiChanged);
+            if (EIPLog.DiagnosticsEnabled)
+            {
+                EIPLog.Info(
+                    "Preset batch wrote faction collapsible values: " +
+                    "factionProfile=" + factionProfilePreset +
+                    ", enemyTypeProfile=" + enemyTypeProfilePreset +
+                    ", " +
+                    "imbue=" + imbuePreset +
+                    ", chance=" + chancePreset +
+                    ", strength=" + strengthPreset +
+                    ", enemyTypes={" + EIPModOptions.GetEnemyTypeEligibilitySummary() + "}" +
+                    ", eligibilityMode=" + GetEligibilityModeLabel() +
+                    ", valuesChanged=" + valuesChanged +
+                    ", uiSynced=" + uiChanged +
+                    ", force=" + force);
+            }
 
             EIPLog.Info(
                 "Preset explain: factionProfile=" + FriendlyFactionProfileLabel(factionProfilePreset) +
@@ -382,10 +384,13 @@ namespace EnemyImbuePresets.Core
 
             lastEligibilityHintSignature = signature;
 
-            EIPLog.Info(
-                "diag evt=eligibility_hint enemyTypeProfile=" + enemyTypeProfilePreset +
-                " mode=" + mode +
-                " note=non_caster_enemy_types_will_be_skipped");
+            if (EIPLog.DiagnosticsEnabled)
+            {
+                EIPLog.Info(
+                    "diag evt=eligibility_hint enemyTypeProfile=" + enemyTypeProfilePreset +
+                    " mode=" + mode +
+                    " note=non_caster_enemy_types_will_be_skipped");
+            }
         }
 
         private static string FriendlyFactionProfileLabel(string preset)
