@@ -12,7 +12,7 @@ namespace EnemyImbuePresets.Configuration
         public const int FactionCount = 8;
         public const int ImbueSlotsPerFaction = 3;
 
-        private const string CategoryPresets = "Enemy Imbue Presets";
+        private const string CategoryPresets = "Factioned Imbuement";
         private const string CategoryEnemyTypes = "Enemy Type Eligibility";
         private const string CategoryDiagnostics = "Diagnostics";
 
@@ -32,8 +32,12 @@ namespace EnemyImbuePresets.Configuration
         private const string OptionPresetChance = "Chance Experience Preset";
         private const string OptionPresetStrength = "Strength Experience Preset";
 
-        private const string OptionEnemyTypeCasterEligible = "Caster Enemies Eligible";
-        private const string OptionEnemyTypeNonCasterEligible = "Non-Caster Enemies Eligible";
+        private const string OptionEnemyTypeMageEligible = "Mage Eligible";
+        private const string OptionEnemyTypeMageBowEligible = "Mage Bow Eligible";
+        private const string OptionEnemyTypeMageMeleeEligible = "Mage Melee Eligible";
+        private const string OptionEnemyTypeBowEligible = "Bow Eligible";
+        private const string OptionEnemyTypeMeleeEligible = "Melee Eligible";
+        private const string OptionEnemyTypeUncertainFallback = "Uncertain Enemy Type Fallback";
 
         private const string OptionLogLevel = "Log Level";
         private const string OptionUpdateInterval = "Imbue Update Interval";
@@ -41,6 +45,7 @@ namespace EnemyImbuePresets.Configuration
         private const string OptionDumpFactions = "Dump Factions";
         private const string OptionDumpWaveMap = "Dump Wave-Faction Map";
         private const string OptionDumpState = "Dump State";
+        private const string OptionDumpEnemyTypes = "Dump Enemy Type Detection";
         private const string OptionForceReapply = "Force Reapply";
 
         private const string OptionF01Enabled = "Combat Enabled";
@@ -137,6 +142,9 @@ namespace EnemyImbuePresets.Configuration
         public const string PresetProfileHighMagic = "HighMagicConflict";
         public const string PresetProfileRandom = "RandomizedEligibility";
 
+        public const string EnemyTypeFallbackMelee = "Melee";
+        public const string EnemyTypeFallbackSkip = "Skip";
+
         public const string PresetImbueLore = "LoreAccurate";
         public const string PresetImbueFactionIdentity = "FactionIdentity";
         public const string PresetImbueArcaneSurge = "ArcaneSurge";
@@ -205,6 +213,33 @@ namespace EnemyImbuePresets.Configuration
             "Fallback",
         };
 
+        private static readonly string[] EnemyTypeDisplayNames =
+        {
+            "Mage",
+            "Mage Bow",
+            "Mage Melee",
+            "Bow",
+            "Melee",
+        };
+
+        private static readonly string[] EnemyTypeOptionNames =
+        {
+            OptionEnemyTypeMageEligible,
+            OptionEnemyTypeMageBowEligible,
+            OptionEnemyTypeMageMeleeEligible,
+            OptionEnemyTypeBowEligible,
+            OptionEnemyTypeMeleeEligible,
+        };
+
+        private static readonly string[] EnemyTypeTokens =
+        {
+            "mage",
+            "mage_bow",
+            "mage_melee",
+            "bow",
+            "melee",
+        };
+
         private static readonly string[][] FactionKeywords =
         {
             new[] { "mixed", "combat" },
@@ -240,6 +275,15 @@ namespace EnemyImbuePresets.Configuration
             Other = 11
         }
 
+        public enum EnemyTypeArchetype
+        {
+            Mage = 0,
+            MageBow = 1,
+            MageMelee = 2,
+            Bow = 3,
+            Melee = 4
+        }
+
         public struct ImbueSlotConfig
         {
             public int SlotIndex;
@@ -260,13 +304,13 @@ namespace EnemyImbuePresets.Configuration
             public int ProfileHash;
         }
 
-        [ModOption(name = OptionEnableMod, order = 0, defaultValueIndex = 1, tooltip = "Master switch for Enemy Imbue Presets.")]
+        [ModOption(name = OptionEnableMod, order = 0, defaultValueIndex = 1, tooltip = "Master switch for Factioned Imbuement.")]
         public static bool EnableMod = true;
 
         [ModOption(name = OptionPresetFactionProfile, category = CategoryPresets, categoryOrder = 0, order = 5, defaultValueIndex = 0, valueSourceName = nameof(FactionProfilePresetProvider), tooltip = "Controls which faction collapsibles are eligible for imbues.")]
         public static string PresetFactionProfile = PresetProfileLore;
 
-        [ModOption(name = OptionPresetEnemyTypeProfile, category = CategoryPresets, categoryOrder = 0, order = 7, defaultValueIndex = 0, valueSourceName = nameof(EnemyTypeProfilePresetProvider), tooltip = "Controls runtime enemy-type eligibility (caster vs non-caster).")]
+        [ModOption(name = OptionPresetEnemyTypeProfile, category = CategoryPresets, categoryOrder = 0, order = 7, defaultValueIndex = 0, valueSourceName = nameof(EnemyTypeProfilePresetProvider), tooltip = "Controls runtime enemy-type eligibility by archetype.")]
         public static string PresetEnemyTypeProfile = PresetProfileLore;
 
         [ModOption(name = OptionPresetImbue, category = CategoryPresets, categoryOrder = 0, order = 10, defaultValueIndex = 0, valueSourceName = nameof(ImbuePresetProvider), tooltip = "Controls which imbue types each faction slot can receive.")]
@@ -278,10 +322,18 @@ namespace EnemyImbuePresets.Configuration
         [ModOption(name = OptionPresetStrength, category = CategoryPresets, categoryOrder = 0, order = 30, defaultValueIndex = 0, valueSourceName = nameof(StrengthPresetProvider), tooltip = "Controls per-slot imbue strength for each faction.")]
         public static string PresetStrength = PresetStrengthFaint;
 
-        [ModOption(name = OptionEnemyTypeCasterEligible, category = CategoryEnemyTypes, categoryOrder = 20, order = 0, defaultValueIndex = 1, tooltip = "If disabled, detected caster-type enemies cannot receive imbues.")]
-        public static bool EnemyTypeCasterEligible = true;
-        [ModOption(name = OptionEnemyTypeNonCasterEligible, category = CategoryEnemyTypes, categoryOrder = 20, order = 10, defaultValueIndex = 1, tooltip = "If disabled, non-caster enemies cannot receive imbues.")]
-        public static bool EnemyTypeNonCasterEligible = true;
+        [ModOption(name = OptionEnemyTypeMageEligible, category = CategoryEnemyTypes, categoryOrder = 20, order = 0, defaultValueIndex = 1, tooltip = "If disabled, pure mage enemies cannot receive imbues.")]
+        public static bool EnemyTypeMageEligible = true;
+        [ModOption(name = OptionEnemyTypeMageBowEligible, category = CategoryEnemyTypes, categoryOrder = 20, order = 10, defaultValueIndex = 1, tooltip = "If disabled, mage-bow hybrid enemies cannot receive imbues.")]
+        public static bool EnemyTypeMageBowEligible = true;
+        [ModOption(name = OptionEnemyTypeMageMeleeEligible, category = CategoryEnemyTypes, categoryOrder = 20, order = 20, defaultValueIndex = 1, tooltip = "If disabled, mage-melee hybrid enemies cannot receive imbues.")]
+        public static bool EnemyTypeMageMeleeEligible = true;
+        [ModOption(name = OptionEnemyTypeBowEligible, category = CategoryEnemyTypes, categoryOrder = 20, order = 30, defaultValueIndex = 0, tooltip = "If disabled, non-caster bow enemies cannot receive imbues.")]
+        public static bool EnemyTypeBowEligible = false;
+        [ModOption(name = OptionEnemyTypeMeleeEligible, category = CategoryEnemyTypes, categoryOrder = 20, order = 40, defaultValueIndex = 0, tooltip = "If disabled, non-caster melee enemies cannot receive imbues.")]
+        public static bool EnemyTypeMeleeEligible = false;
+        [ModOption(name = OptionEnemyTypeUncertainFallback, category = CategoryEnemyTypes, categoryOrder = 20, order = 50, defaultValueIndex = 0, valueSourceName = nameof(EnemyTypeFallbackProvider), tooltip = "How to handle enemies where runtime archetype signals are uncertain.")]
+        public static string EnemyTypeUncertainFallbackMode = EnemyTypeFallbackMelee;
 
         [ModOption(name = OptionF01Enabled, category = CategoryF01, categoryOrder = 100, order = 0, defaultValueIndex = 1)]
         public static bool F01Enabled = true;
@@ -491,6 +543,9 @@ namespace EnemyImbuePresets.Configuration
         [ModOption(name = OptionDumpState, category = CategoryDiagnostics, categoryOrder = 999, order = 50, defaultValueIndex = 0)]
         [ModOptionDontSave]
         public static bool DumpState = false;
+        [ModOption(name = OptionDumpEnemyTypes, category = CategoryDiagnostics, categoryOrder = 999, order = 55, defaultValueIndex = 0)]
+        [ModOptionDontSave]
+        public static bool DumpEnemyTypes = false;
         [ModOption(name = OptionForceReapply, category = CategoryDiagnostics, categoryOrder = 999, order = 60, defaultValueIndex = 0)]
         [ModOptionDontSave]
         public static bool ForceReapply = false;
@@ -530,13 +585,13 @@ namespace EnemyImbuePresets.Configuration
         };
 
         // Enemy-type eligibility profile writes:
-        // [0] caster eligible, [1] non-caster eligible.
+        // [0] Mage, [1] Mage Bow, [2] Mage Melee, [3] Bow, [4] Melee.
         private static readonly bool[][] ProfileEnemyTypeValues =
         {
-            new[] { true,  false }, // Lore Friendly
-            new[] { true,  true  }, // Frontier Pressure
-            new[] { true,  true  }, // Warfront Arcana
-            new[] { true,  true  }  // High Magic Conflict
+            new[] { true,  true,  true,  false, false }, // Mage (casters only)
+            new[] { true,  true,  true,  true,  false }, // Mage Bow
+            new[] { true,  true,  true,  false, true  }, // Mage Melee
+            new[] { true,  true,  true,  true,  true  }  // Mage Bow Melee
         };
 
         // Imbue preset determines which spells can appear in each slot (None = no imbue in that slot).
@@ -782,14 +837,71 @@ namespace EnemyImbuePresets.Configuration
             return CategoryEnemyTypes;
         }
 
+        public static string GetEnemyTypeOptionName(EnemyTypeArchetype archetype)
+        {
+            int index = (int)archetype;
+            return index >= 0 && index < EnemyTypeOptionNames.Length
+                ? EnemyTypeOptionNames[index]
+                : string.Empty;
+        }
+
+        public static string GetEnemyTypeDisplayName(EnemyTypeArchetype archetype)
+        {
+            int index = (int)archetype;
+            return index >= 0 && index < EnemyTypeDisplayNames.Length
+                ? EnemyTypeDisplayNames[index]
+                : "Unknown";
+        }
+
+        public static string GetEnemyTypeToken(EnemyTypeArchetype archetype)
+        {
+            int index = (int)archetype;
+            return index >= 0 && index < EnemyTypeTokens.Length
+                ? EnemyTypeTokens[index]
+                : "unknown";
+        }
+
+        public static bool IsCasterArchetype(EnemyTypeArchetype archetype)
+        {
+            return archetype == EnemyTypeArchetype.Mage ||
+                   archetype == EnemyTypeArchetype.MageBow ||
+                   archetype == EnemyTypeArchetype.MageMelee;
+        }
+
+        public static int EnemyTypeArchetypeCount()
+        {
+            return EnemyTypeDisplayNames.Length;
+        }
+
+        public static string GetEnemyTypeFallbackOptionName()
+        {
+            return OptionEnemyTypeUncertainFallback;
+        }
+
+        public static string GetEnemyTypeFallbackMode()
+        {
+            return NormalizeEnemyTypeFallbackMode(EnemyTypeUncertainFallbackMode);
+        }
+
+        public static bool ShouldSkipUncertainEnemyTypes()
+        {
+            return string.Equals(GetEnemyTypeFallbackMode(), EnemyTypeFallbackSkip, StringComparison.Ordinal);
+        }
+
+        public static string GetEnemyTypeFallbackDisplayLabel()
+        {
+            return ShouldSkipUncertainEnemyTypes() ? "Skip Enemy" : "Treat As Melee";
+        }
+
+        // Backward-compatible aliases used by older logging/sync code paths.
         public static string GetEnemyTypeCasterOptionName()
         {
-            return OptionEnemyTypeCasterEligible;
+            return GetEnemyTypeOptionName(EnemyTypeArchetype.Mage);
         }
 
         public static string GetEnemyTypeNonCasterOptionName()
         {
-            return OptionEnemyTypeNonCasterEligible;
+            return GetEnemyTypeOptionName(EnemyTypeArchetype.Melee);
         }
 
         public static string GetFactionShortName(int factionIndex)
@@ -979,8 +1091,11 @@ namespace EnemyImbuePresets.Configuration
             hash = CombineHash(hash, PercentHash(UpdateInterval * 100f));
             hash = CombineHash(hash, PercentHash(RescanInterval * 100f));
 
-            hash = CombineHash(hash, EnemyTypeCasterEligible ? 1 : 0);
-            hash = CombineHash(hash, EnemyTypeNonCasterEligible ? 1 : 0);
+            for (int i = 0; i < EnemyTypeArchetypeCount(); i++)
+            {
+                hash = CombineHash(hash, GetEnemyTypeEligibility((EnemyTypeArchetype)i) ? 1 : 0);
+            }
+            hash = CombineHash(hash, StringHash(GetEnemyTypeFallbackMode()));
 
             for (int faction = 1; faction <= FactionCount; faction++)
             {
@@ -1004,8 +1119,11 @@ namespace EnemyImbuePresets.Configuration
         {
             int hash = 29;
             hash = CombineHash(hash, EnableMod ? 1 : 0);
-            hash = CombineHash(hash, EnemyTypeCasterEligible ? 1 : 0);
-            hash = CombineHash(hash, EnemyTypeNonCasterEligible ? 1 : 0);
+            for (int i = 0; i < EnemyTypeArchetypeCount(); i++)
+            {
+                hash = CombineHash(hash, GetEnemyTypeEligibility((EnemyTypeArchetype)i) ? 1 : 0);
+            }
+            hash = CombineHash(hash, StringHash(GetEnemyTypeFallbackMode()));
 
             for (int faction = 1; faction <= FactionCount; faction++)
             {
@@ -1076,7 +1194,12 @@ namespace EnemyImbuePresets.Configuration
         {
             bool[] values = BuildEnemyTypeProfileEnabledArray(enemyTypeProfilePreset);
             bool changed = false;
-            changed |= SetEnemyTypeEligibility(casterEligible: values[0], nonCasterEligible: values[1]);
+            changed |= SetEnemyTypeEligibility(
+                mageEligible: values[(int)EnemyTypeArchetype.Mage],
+                mageBowEligible: values[(int)EnemyTypeArchetype.MageBow],
+                mageMeleeEligible: values[(int)EnemyTypeArchetype.MageMelee],
+                bowEligible: values[(int)EnemyTypeArchetype.Bow],
+                meleeEligible: values[(int)EnemyTypeArchetype.Melee]);
             return changed;
         }
 
@@ -1237,25 +1360,113 @@ namespace EnemyImbuePresets.Configuration
             return string.IsNullOrWhiteSpace(fallbackName) ? "Faction " + factionId : fallbackName;
         }
 
-        public static bool SetEnemyTypeEligibility(bool casterEligible, bool nonCasterEligible)
+        public static bool SetEnemyTypeEligibility(bool mageEligible, bool mageBowEligible, bool mageMeleeEligible, bool bowEligible, bool meleeEligible)
         {
             bool changed = false;
-            if (EnemyTypeCasterEligible != casterEligible)
+            if (EnemyTypeMageEligible != mageEligible)
             {
-                EnemyTypeCasterEligible = casterEligible;
+                EnemyTypeMageEligible = mageEligible;
                 changed = true;
             }
-            if (EnemyTypeNonCasterEligible != nonCasterEligible)
+            if (EnemyTypeMageBowEligible != mageBowEligible)
             {
-                EnemyTypeNonCasterEligible = nonCasterEligible;
+                EnemyTypeMageBowEligible = mageBowEligible;
+                changed = true;
+            }
+            if (EnemyTypeMageMeleeEligible != mageMeleeEligible)
+            {
+                EnemyTypeMageMeleeEligible = mageMeleeEligible;
+                changed = true;
+            }
+            if (EnemyTypeBowEligible != bowEligible)
+            {
+                EnemyTypeBowEligible = bowEligible;
+                changed = true;
+            }
+            if (EnemyTypeMeleeEligible != meleeEligible)
+            {
+                EnemyTypeMeleeEligible = meleeEligible;
                 changed = true;
             }
             return changed;
         }
 
-        public static bool IsEnemyTypeEligible(bool isCaster)
+        public static bool GetEnemyTypeEligibility(EnemyTypeArchetype archetype)
         {
-            return isCaster ? EnemyTypeCasterEligible : EnemyTypeNonCasterEligible;
+            switch (archetype)
+            {
+                case EnemyTypeArchetype.Mage:
+                    return EnemyTypeMageEligible;
+                case EnemyTypeArchetype.MageBow:
+                    return EnemyTypeMageBowEligible;
+                case EnemyTypeArchetype.MageMelee:
+                    return EnemyTypeMageMeleeEligible;
+                case EnemyTypeArchetype.Bow:
+                    return EnemyTypeBowEligible;
+                case EnemyTypeArchetype.Melee:
+                    return EnemyTypeMeleeEligible;
+                default:
+                    return false;
+            }
+        }
+
+        public static bool IsEnemyTypeEligible(EnemyTypeArchetype archetype)
+        {
+            return GetEnemyTypeEligibility(archetype);
+        }
+
+        public static bool IsAnyCasterEnemyTypeEligible()
+        {
+            return EnemyTypeMageEligible || EnemyTypeMageBowEligible || EnemyTypeMageMeleeEligible;
+        }
+
+        public static bool IsAnyNonCasterEnemyTypeEligible()
+        {
+            return EnemyTypeBowEligible || EnemyTypeMeleeEligible;
+        }
+
+        public static string GetEnemyTypeEligibilityModeLabel()
+        {
+            bool anyCaster = IsAnyCasterEnemyTypeEligible();
+            bool anyNonCaster = IsAnyNonCasterEnemyTypeEligible();
+
+            if (anyCaster && anyNonCaster)
+            {
+                bool allEnabled = true;
+                for (int i = 0; i < EnemyTypeArchetypeCount(); i++)
+                {
+                    if (!GetEnemyTypeEligibility((EnemyTypeArchetype)i))
+                    {
+                        allEnabled = false;
+                        break;
+                    }
+                }
+
+                return allEnabled ? "all" : "mixed";
+            }
+
+            if (anyCaster && !anyNonCaster)
+            {
+                return "casters_only";
+            }
+
+            if (!anyCaster && anyNonCaster)
+            {
+                return "noncasters_only";
+            }
+
+            return "none";
+        }
+
+        public static string GetEnemyTypeEligibilitySummary()
+        {
+            return
+                "mage=" + EnemyTypeMageEligible +
+                ", mageBow=" + EnemyTypeMageBowEligible +
+                ", mageMelee=" + EnemyTypeMageMeleeEligible +
+                ", bow=" + EnemyTypeBowEligible +
+                ", melee=" + EnemyTypeMeleeEligible +
+                ", uncertainFallback=" + GetEnemyTypeFallbackMode();
         }
 
         public static ModOptionString[] LogLevelProvider()
@@ -1264,7 +1475,17 @@ namespace EnemyImbuePresets.Configuration
             {
                 new ModOptionString("Off", "Off"),
                 new ModOptionString("Basic", "Basic"),
+                new ModOptionString("Diagnostics", "Diagnostics"),
                 new ModOptionString("Verbose", "Verbose")
+            };
+        }
+
+        public static ModOptionString[] EnemyTypeFallbackProvider()
+        {
+            return new[]
+            {
+                new ModOptionString("Treat As Melee", EnemyTypeFallbackMelee),
+                new ModOptionString("Skip Enemy", EnemyTypeFallbackSkip)
             };
         }
 
@@ -1364,11 +1585,11 @@ namespace EnemyImbuePresets.Configuration
         {
             return new[]
             {
-                new ModOptionString("Lore Friendly", PresetProfileLore),
-                new ModOptionString("Frontier Pressure", PresetProfileFrontier),
-                new ModOptionString("Warfront Arcana", PresetProfileWarfront),
-                new ModOptionString("High Magic Conflict", PresetProfileHighMagic),
-                new ModOptionString("Randomized Eligibility", PresetProfileRandom)
+                new ModOptionString("Default", PresetProfileLore),
+                new ModOptionString("Core Factions", PresetProfileFrontier),
+                new ModOptionString("Most Factions", PresetProfileWarfront),
+                new ModOptionString("All Factions", PresetProfileHighMagic),
+                new ModOptionString("Random", PresetProfileRandom)
             };
         }
 
@@ -1376,11 +1597,11 @@ namespace EnemyImbuePresets.Configuration
         {
             return new[]
             {
-                new ModOptionString("Lore Friendly (Casters Only)", PresetProfileLore),
-                new ModOptionString("Frontier Pressure (Mostly Open)", PresetProfileFrontier),
-                new ModOptionString("Warfront Arcana (Open)", PresetProfileWarfront),
-                new ModOptionString("High Magic Conflict (Open)", PresetProfileHighMagic),
-                new ModOptionString("Randomized Eligibility", PresetProfileRandom)
+                new ModOptionString("Mage", PresetProfileLore),
+                new ModOptionString("Mage Bow", PresetProfileFrontier),
+                new ModOptionString("Mage Melee", PresetProfileWarfront),
+                new ModOptionString("Mage Bow Melee", PresetProfileHighMagic),
+                new ModOptionString("Random", PresetProfileRandom)
             };
         }
 
@@ -1394,11 +1615,11 @@ namespace EnemyImbuePresets.Configuration
         {
             return new[]
             {
-                new ModOptionString("Lore Friendly", PresetImbueLore),
-                new ModOptionString("Frontier Doctrines", PresetImbueFactionIdentity),
-                new ModOptionString("Warfront Expansion", PresetImbueArcaneSurge),
-                new ModOptionString("High Magic Arsenal", PresetImbueElementalChaos),
-                new ModOptionString("Randomized", PresetImbueRandomized)
+                new ModOptionString("Default", PresetImbueLore),
+                new ModOptionString("Two-Slot", PresetImbueFactionIdentity),
+                new ModOptionString("Tri-Slot", PresetImbueArcaneSurge),
+                new ModOptionString("Tri-Slot+", PresetImbueElementalChaos),
+                new ModOptionString("Random", PresetImbueRandomized)
             };
         }
 
@@ -1406,11 +1627,11 @@ namespace EnemyImbuePresets.Configuration
         {
             return new[]
             {
-                new ModOptionString("Lore Friendly", PresetChanceLow),
-                new ModOptionString("Frontier Pressure", PresetChanceBalanced),
-                new ModOptionString("Warfront Arcana", PresetChanceAggressive),
-                new ModOptionString("High Magic Conflict", PresetChanceRelentless),
-                new ModOptionString("Chaotic Storm", PresetChanceOverflow)
+                new ModOptionString("Default", PresetChanceLow),
+                new ModOptionString("Increased", PresetChanceBalanced),
+                new ModOptionString("High", PresetChanceAggressive),
+                new ModOptionString("Very High", PresetChanceRelentless),
+                new ModOptionString("Maximum", PresetChanceOverflow)
             };
         }
 
@@ -1418,36 +1639,40 @@ namespace EnemyImbuePresets.Configuration
         {
             return new[]
             {
-                new ModOptionString("Lore Friendly", PresetStrengthFaint),
-                new ModOptionString("Frontier Pressure", PresetStrengthStandard),
-                new ModOptionString("Warfront Arcana", PresetStrengthEmpowered),
-                new ModOptionString("High Magic Conflict", PresetStrengthOvercharged),
-                new ModOptionString("Chaotic Storm", PresetStrengthCataclysmic)
+                new ModOptionString("Default", PresetStrengthFaint),
+                new ModOptionString("Increased", PresetStrengthStandard),
+                new ModOptionString("High", PresetStrengthEmpowered),
+                new ModOptionString("Very High", PresetStrengthOvercharged),
+                new ModOptionString("Maximum", PresetStrengthCataclysmic)
             };
         }
 
         public static string NormalizeFactionProfilePreset(string preset)
         {
             if (string.Equals(preset, PresetProfileLore, StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(preset, "Lore Friendly", StringComparison.OrdinalIgnoreCase))
+                string.Equals(preset, "Lore Friendly", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(preset, "Default", StringComparison.OrdinalIgnoreCase))
             {
                 return PresetProfileLore;
             }
 
             if (string.Equals(preset, PresetProfileFrontier, StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(preset, "Frontier Pressure", StringComparison.OrdinalIgnoreCase))
+                string.Equals(preset, "Frontier Pressure", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(preset, "Core Factions", StringComparison.OrdinalIgnoreCase))
             {
                 return PresetProfileFrontier;
             }
 
             if (string.Equals(preset, PresetProfileWarfront, StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(preset, "Warfront Arcana", StringComparison.OrdinalIgnoreCase))
+                string.Equals(preset, "Warfront Arcana", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(preset, "Most Factions", StringComparison.OrdinalIgnoreCase))
             {
                 return PresetProfileWarfront;
             }
 
             if (string.Equals(preset, PresetProfileHighMagic, StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(preset, "High Magic Conflict", StringComparison.OrdinalIgnoreCase))
+                string.Equals(preset, "High Magic Conflict", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(preset, "All Factions", StringComparison.OrdinalIgnoreCase))
             {
                 return PresetProfileHighMagic;
             }
@@ -1471,28 +1696,68 @@ namespace EnemyImbuePresets.Configuration
 
             string trimmed = preset.Trim();
 
-            if (trimmed.StartsWith("Lore Friendly", StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(trimmed, PresetProfileLore, StringComparison.OrdinalIgnoreCase) ||
+                trimmed.StartsWith("Lore Friendly", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(trimmed, "Default", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(trimmed, "Mage", StringComparison.OrdinalIgnoreCase))
             {
                 return PresetProfileLore;
             }
-            if (trimmed.StartsWith("Frontier Pressure", StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(trimmed, PresetProfileFrontier, StringComparison.OrdinalIgnoreCase) ||
+                trimmed.StartsWith("Frontier Pressure", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(trimmed, "Mage Bow", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(trimmed, "Open", StringComparison.OrdinalIgnoreCase))
             {
                 return PresetProfileFrontier;
             }
-            if (trimmed.StartsWith("Warfront Arcana", StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(trimmed, PresetProfileWarfront, StringComparison.OrdinalIgnoreCase) ||
+                trimmed.StartsWith("Warfront Arcana", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(trimmed, "Mage Melee", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(trimmed, "Open+", StringComparison.OrdinalIgnoreCase))
             {
                 return PresetProfileWarfront;
             }
-            if (trimmed.StartsWith("High Magic Conflict", StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(trimmed, PresetProfileHighMagic, StringComparison.OrdinalIgnoreCase) ||
+                trimmed.StartsWith("High Magic Conflict", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(trimmed, "Mage Bow Melee", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(trimmed, "Open++", StringComparison.OrdinalIgnoreCase))
             {
                 return PresetProfileHighMagic;
             }
-            if (trimmed.StartsWith("Randomized", StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(trimmed, PresetProfileRandom, StringComparison.OrdinalIgnoreCase) ||
+                trimmed.StartsWith("Randomized", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(trimmed, "Random", StringComparison.OrdinalIgnoreCase))
             {
                 return PresetProfileRandom;
             }
 
             return NormalizeFactionProfilePreset(trimmed);
+        }
+
+        public static string NormalizeEnemyTypeFallbackMode(string mode)
+        {
+            if (string.IsNullOrWhiteSpace(mode))
+            {
+                return EnemyTypeFallbackMelee;
+            }
+
+            string trimmed = mode.Trim();
+            if (string.Equals(trimmed, EnemyTypeFallbackSkip, StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(trimmed, "Skip Enemy", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(trimmed, "Skip", StringComparison.OrdinalIgnoreCase))
+            {
+                return EnemyTypeFallbackSkip;
+            }
+
+            if (string.Equals(trimmed, EnemyTypeFallbackMelee, StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(trimmed, "Treat As Melee", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(trimmed, "Fallback Melee", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(trimmed, "Default", StringComparison.OrdinalIgnoreCase))
+            {
+                return EnemyTypeFallbackMelee;
+            }
+
+            return EnemyTypeFallbackMelee;
         }
 
         public static string NormalizeProfilePreset(string preset)
@@ -1513,7 +1778,8 @@ namespace EnemyImbuePresets.Configuration
         {
             if (string.Equals(preset, PresetImbueLore, StringComparison.OrdinalIgnoreCase) ||
                 string.Equals(preset, "Lore Accurate", StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(preset, "Lore Friendly", StringComparison.OrdinalIgnoreCase))
+                string.Equals(preset, "Lore Friendly", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(preset, "Default", StringComparison.OrdinalIgnoreCase))
             {
                 return PresetImbueLore;
             }
@@ -1521,27 +1787,31 @@ namespace EnemyImbuePresets.Configuration
             if (string.Equals(preset, PresetImbueFactionIdentity, StringComparison.OrdinalIgnoreCase) ||
                 string.Equals(preset, "Faction Identity", StringComparison.OrdinalIgnoreCase) ||
                 string.Equals(preset, "Frontier Doctrines", StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(preset, "Less Lore", StringComparison.OrdinalIgnoreCase))
+                string.Equals(preset, "Less Lore", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(preset, "Two-Slot", StringComparison.OrdinalIgnoreCase))
             {
                 return PresetImbueFactionIdentity;
             }
 
             if (string.Equals(preset, PresetImbueArcaneSurge, StringComparison.OrdinalIgnoreCase) ||
                 string.Equals(preset, "Arcane Surge", StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(preset, "Warfront Expansion", StringComparison.OrdinalIgnoreCase))
+                string.Equals(preset, "Warfront Expansion", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(preset, "Tri-Slot", StringComparison.OrdinalIgnoreCase))
             {
                 return PresetImbueArcaneSurge;
             }
 
             if (string.Equals(preset, PresetImbueElementalChaos, StringComparison.OrdinalIgnoreCase) ||
                 string.Equals(preset, "Elemental Chaos", StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(preset, "High Magic Arsenal", StringComparison.OrdinalIgnoreCase))
+                string.Equals(preset, "High Magic Arsenal", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(preset, "Tri-Slot+", StringComparison.OrdinalIgnoreCase))
             {
                 return PresetImbueElementalChaos;
             }
 
             if (string.Equals(preset, PresetImbueRandomized, StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(preset, "Randomized", StringComparison.OrdinalIgnoreCase))
+                string.Equals(preset, "Randomized", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(preset, "Random", StringComparison.OrdinalIgnoreCase))
             {
                 return PresetImbueRandomized;
             }
@@ -1553,35 +1823,40 @@ namespace EnemyImbuePresets.Configuration
         {
             if (string.Equals(preset, PresetChanceLow, StringComparison.OrdinalIgnoreCase) ||
                 string.Equals(preset, "Low Intensity", StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(preset, "Lore Friendly", StringComparison.OrdinalIgnoreCase))
+                string.Equals(preset, "Lore Friendly", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(preset, "Default", StringComparison.OrdinalIgnoreCase))
             {
                 return PresetChanceLow;
             }
 
             if (string.Equals(preset, PresetChanceBalanced, StringComparison.OrdinalIgnoreCase) ||
                 string.Equals(preset, "Balanced Battles", StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(preset, "Frontier Pressure", StringComparison.OrdinalIgnoreCase))
+                string.Equals(preset, "Frontier Pressure", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(preset, "Increased", StringComparison.OrdinalIgnoreCase))
             {
                 return PresetChanceBalanced;
             }
 
             if (string.Equals(preset, PresetChanceAggressive, StringComparison.OrdinalIgnoreCase) ||
                 string.Equals(preset, "Aggressive Waves", StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(preset, "Warfront Arcana", StringComparison.OrdinalIgnoreCase))
+                string.Equals(preset, "Warfront Arcana", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(preset, "High", StringComparison.OrdinalIgnoreCase))
             {
                 return PresetChanceAggressive;
             }
 
             if (string.Equals(preset, PresetChanceRelentless, StringComparison.OrdinalIgnoreCase) ||
                 string.Equals(preset, "Relentless Threat", StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(preset, "High Magic Conflict", StringComparison.OrdinalIgnoreCase))
+                string.Equals(preset, "High Magic Conflict", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(preset, "Very High", StringComparison.OrdinalIgnoreCase))
             {
                 return PresetChanceRelentless;
             }
 
             if (string.Equals(preset, PresetChanceOverflow, StringComparison.OrdinalIgnoreCase) ||
                 string.Equals(preset, "Overflow Normalized", StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(preset, "Chaotic Storm", StringComparison.OrdinalIgnoreCase))
+                string.Equals(preset, "Chaotic Storm", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(preset, "Maximum", StringComparison.OrdinalIgnoreCase))
             {
                 return PresetChanceOverflow;
             }
@@ -1593,35 +1868,40 @@ namespace EnemyImbuePresets.Configuration
         {
             if (string.Equals(preset, PresetStrengthFaint, StringComparison.OrdinalIgnoreCase) ||
                 string.Equals(preset, "Faint Charge", StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(preset, "Lore Friendly", StringComparison.OrdinalIgnoreCase))
+                string.Equals(preset, "Lore Friendly", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(preset, "Default", StringComparison.OrdinalIgnoreCase))
             {
                 return PresetStrengthFaint;
             }
 
             if (string.Equals(preset, PresetStrengthStandard, StringComparison.OrdinalIgnoreCase) ||
                 string.Equals(preset, "Battle Ready", StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(preset, "Frontier Pressure", StringComparison.OrdinalIgnoreCase))
+                string.Equals(preset, "Frontier Pressure", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(preset, "Increased", StringComparison.OrdinalIgnoreCase))
             {
                 return PresetStrengthStandard;
             }
 
             if (string.Equals(preset, PresetStrengthEmpowered, StringComparison.OrdinalIgnoreCase) ||
                 string.Equals(preset, "Empowered", StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(preset, "Warfront Arcana", StringComparison.OrdinalIgnoreCase))
+                string.Equals(preset, "Warfront Arcana", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(preset, "High", StringComparison.OrdinalIgnoreCase))
             {
                 return PresetStrengthEmpowered;
             }
 
             if (string.Equals(preset, PresetStrengthOvercharged, StringComparison.OrdinalIgnoreCase) ||
                 string.Equals(preset, "Overcharged", StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(preset, "High Magic Conflict", StringComparison.OrdinalIgnoreCase))
+                string.Equals(preset, "High Magic Conflict", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(preset, "Very High", StringComparison.OrdinalIgnoreCase))
             {
                 return PresetStrengthOvercharged;
             }
 
             if (string.Equals(preset, PresetStrengthCataclysmic, StringComparison.OrdinalIgnoreCase) ||
                 string.Equals(preset, "Cataclysmic", StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(preset, "Chaotic Storm", StringComparison.OrdinalIgnoreCase))
+                string.Equals(preset, "Chaotic Storm", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(preset, "Maximum", StringComparison.OrdinalIgnoreCase))
             {
                 return PresetStrengthCataclysmic;
             }
@@ -1701,7 +1981,7 @@ namespace EnemyImbuePresets.Configuration
 
         private static bool[] CopyEnemyTypeArray(bool[] source)
         {
-            bool[] copy = new bool[2];
+            bool[] copy = new bool[EnemyTypeArchetypeCount()];
             if (source == null)
             {
                 return copy;
@@ -1936,15 +2216,25 @@ namespace EnemyImbuePresets.Configuration
 
         private static bool[] BuildRandomEnemyTypeEnabledArray()
         {
-            bool caster = presetRandom.NextDouble() >= 0.35;
-            bool nonCaster = presetRandom.NextDouble() >= 0.35;
+            bool[] values = new bool[EnemyTypeArchetypeCount()];
+            int enabledCount = 0;
 
-            if (!caster && !nonCaster)
+            for (int i = 0; i < values.Length; i++)
             {
-                caster = true;
+                bool enabled = presetRandom.NextDouble() >= 0.35;
+                values[i] = enabled;
+                if (enabled)
+                {
+                    enabledCount++;
+                }
             }
 
-            return new[] { caster, nonCaster };
+            if (enabledCount == 0)
+            {
+                values[(int)EnemyTypeArchetype.Mage] = true;
+            }
+
+            return values;
         }
 
         private static string[][] CreateSpellMatrix()

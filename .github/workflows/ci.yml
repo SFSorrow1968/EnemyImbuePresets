@@ -1,4 +1,4 @@
-﻿name: Enemy Imbue Presets CI
+﻿name: ci
 
 on:
   push:
@@ -14,8 +14,8 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 8.0.x
+          dotnet-version: 9.0.x
 
-      - name: Run Smoke Checks
+      - name: Run smoke checks
         shell: pwsh
-        run: ./_agent/ci-smoke.ps1 -Strict
+        run: ./_agent/ci-smoke.ps1

@@ -4,6 +4,7 @@ When making changes in this repo:
 - Always build `Release` and `Nomad` before finalizing.
 - Keep changes aligned with the current folder structure (`Configuration`, `Core`, `Hooks`, `_agent`, `_docs`).
 - Use local references in `References/` and local tooling in `../.tools/` to decompile `../libs/*.dll` when API behavior is unclear.
+- Shared game DLL path for this workspace is `D:\Documents\Projects\repos\BS\libs`.
 - Build artifacts are expected in `bin/Release/PCVR/EnemyImbuePresets/` and `bin/Release/Nomad/EnemyImbuePresets/`.
 - Treat `QUIRKS.md` as an index of theme-specific quirk logs, not a single catch-all file.
 - Before deep refactors or debugging sessions, review `DEVELOPMENT.md`, `QUIRKS.md`, and the relevant `<THEME>QUIRKS.md` files.

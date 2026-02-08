@@ -17,11 +17,13 @@
 - Check verbose logs for both spell transfer and energy writes.
 
 ## Enemy type eligibility not behaving as expected
-- Verify `Caster Enemies Eligible` / `Non-Caster Enemies Eligible` values.
-- Use verbose logs and check `enemyType=Caster` or `enemyType=NonCaster` in track lines.
+- Verify `Mage Eligible`, `Mage Bow Eligible`, `Mage Melee Eligible`, `Bow Eligible`, and `Melee Eligible` values.
+- Verify `Uncertain Enemy Type Fallback` is set as intended (`Treat As Melee` vs `Skip Enemy`).
+- Use verbose logs and check `enemyType=Mage`, `enemyType=Mage Bow`, `enemyType=Mage Melee`, `enemyType=Bow`, or `enemyType=Melee` in track lines.
+- Use `Dump Enemy Type Detection` to inspect classification evidence per tracked enemy.
 - Remember `Enemy Type Profile Preset` changes can overwrite enemy-type toggles.
 
 ## Lore-friendly caster mirror seems wrong
-- In lore-friendly profile mode, caster enemies attempt to use their loaded/casting spell id for imbues.
+- In `Mage` profile mode, caster enemies attempt to use their loaded/casting spell id for imbues.
 - If that spell id is missing or not a valid `SpellCastCharge`, the system falls back to the selected slot spell.
 - Use `Verbose` logging and `Dump State` to confirm the assigned slot spell and current faction values.

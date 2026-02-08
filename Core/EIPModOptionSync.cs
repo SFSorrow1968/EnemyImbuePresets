@@ -22,6 +22,7 @@ namespace EnemyImbuePresets.Core
         private bool startupOverwriteWatchActive;
         private float startupOverwriteWatchEndTime;
         private int startupOptionsStateHash;
+        private static string lastEligibilityHintSignature = string.Empty;
 
         private readonly Dictionary<string, ModOption> modOptionsByKey = new Dictionary<string, ModOption>(StringComparer.Ordinal);
 
@@ -41,6 +42,7 @@ namespace EnemyImbuePresets.Core
             startupOverwriteWatchActive = false;
             startupOverwriteWatchEndTime = 0f;
             startupOptionsStateHash = int.MinValue;
+            lastEligibilityHintSignature = string.Empty;
             modData = null;
             modOptionsByKey.Clear();
 
@@ -77,6 +79,7 @@ namespace EnemyImbuePresets.Core
             startupOverwriteWatchActive = false;
             startupOverwriteWatchEndTime = 0f;
             startupOptionsStateHash = int.MinValue;
+            lastEligibilityHintSignature = string.Empty;
         }
 
         public void Update()
@@ -246,8 +249,19 @@ namespace EnemyImbuePresets.Core
             string enemyTypeCategory = EIPModOptions.GetEnemyTypeCategory();
             if (!string.IsNullOrWhiteSpace(enemyTypeCategory))
             {
-                changed |= SyncBoolOption(enemyTypeCategory, EIPModOptions.GetEnemyTypeCasterOptionName(), EIPModOptions.EnemyTypeCasterEligible);
-                changed |= SyncBoolOption(enemyTypeCategory, EIPModOptions.GetEnemyTypeNonCasterOptionName(), EIPModOptions.EnemyTypeNonCasterEligible);
+                for (int i = 0; i < EIPModOptions.EnemyTypeArchetypeCount(); i++)
+                {
+                    EIPModOptions.EnemyTypeArchetype archetype = (EIPModOptions.EnemyTypeArchetype)i;
+                    changed |= SyncBoolOption(
+                        enemyTypeCategory,
+                        EIPModOptions.GetEnemyTypeOptionName(archetype),
+                        EIPModOptions.GetEnemyTypeEligibility(archetype));
+                }
+
+                changed |= SyncStringOption(
+                    enemyTypeCategory,
+                    EIPModOptions.GetEnemyTypeFallbackOptionName(),
+                    EIPModOptions.GetEnemyTypeFallbackMode());
             }
 
             return changed;
@@ -302,12 +316,23 @@ namespace EnemyImbuePresets.Core
                 "imbue=" + imbuePreset +
                 ", chance=" + chancePreset +
                 ", strength=" + strengthPreset +
-                ", casterEligible=" + EIPModOptions.EnemyTypeCasterEligible +
-                ", nonCasterEligible=" + EIPModOptions.EnemyTypeNonCasterEligible +
+                ", enemyTypes={" + EIPModOptions.GetEnemyTypeEligibilitySummary() + "}" +
+                ", eligibilityMode=" + GetEligibilityModeLabel() +
                 ", valuesChanged=" + valuesChanged +
                 ", uiSynced=" + uiChanged +
                 ", force=" + force,
                 verboseOnly: !valuesChanged && !uiChanged);
+
+            EIPLog.Info(
+                "Preset explain: factionProfile=" + FriendlyFactionProfileLabel(factionProfilePreset) +
+                ", enemyTypeProfile=" + FriendlyEnemyTypeProfileLabel(enemyTypeProfilePreset) +
+                ", imbue=" + FriendlyImbueLabel(imbuePreset) +
+                ", chance=" + FriendlyChanceLabel(chancePreset) +
+                ", strength=" + FriendlyStrengthLabel(strengthPreset) +
+                ", enemyTypes={" + EIPModOptions.GetEnemyTypeEligibilitySummary() + "}",
+                verboseOnly: true);
+
+            LogEnemyTypeEligibilityHint(enemyTypeProfilePreset);
 
             for (int faction = 1; faction <= EIPModOptions.FactionCount; faction++)
             {
@@ -333,6 +358,93 @@ namespace EnemyImbuePresets.Core
                     " | S2 " + s2Spell + " " + s2Chance.ToString("F1") + "%/" + s2Strength.ToString("F1") + "%" +
                     " | S3 " + s3Spell + " " + s3Chance.ToString("F1") + "%/" + s3Strength.ToString("F1") + "%",
                     verboseOnly: true);
+            }
+        }
+
+        private static string GetEligibilityModeLabel()
+        {
+            return EIPModOptions.GetEnemyTypeEligibilityModeLabel();
+        }
+
+        private static void LogEnemyTypeEligibilityHint(string enemyTypeProfilePreset)
+        {
+            string mode = GetEligibilityModeLabel();
+            if (!string.Equals(mode, "casters_only", StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            string signature = (enemyTypeProfilePreset ?? string.Empty).Trim() + "|" + mode;
+            if (string.Equals(signature, lastEligibilityHintSignature, StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            lastEligibilityHintSignature = signature;
+
+            EIPLog.Info(
+                "diag evt=eligibility_hint enemyTypeProfile=" + enemyTypeProfilePreset +
+                " mode=" + mode +
+                " note=non_caster_enemy_types_will_be_skipped");
+        }
+
+        private static string FriendlyFactionProfileLabel(string preset)
+        {
+            switch (EIPModOptions.NormalizeFactionProfilePreset(preset))
+            {
+                case EIPModOptions.PresetProfileFrontier: return "Core Factions";
+                case EIPModOptions.PresetProfileWarfront: return "Most Factions";
+                case EIPModOptions.PresetProfileHighMagic: return "All Factions";
+                case EIPModOptions.PresetProfileRandom: return "Random";
+                default: return "Default";
+            }
+        }
+
+        private static string FriendlyEnemyTypeProfileLabel(string preset)
+        {
+            switch (EIPModOptions.NormalizeEnemyTypeProfilePreset(preset))
+            {
+                case EIPModOptions.PresetProfileFrontier: return "Mage Bow";
+                case EIPModOptions.PresetProfileWarfront: return "Mage Melee";
+                case EIPModOptions.PresetProfileHighMagic: return "Mage Bow Melee";
+                case EIPModOptions.PresetProfileRandom: return "Random";
+                default: return "Mage";
+            }
+        }
+
+        private static string FriendlyImbueLabel(string preset)
+        {
+            switch (EIPModOptions.NormalizeImbuePreset(preset))
+            {
+                case EIPModOptions.PresetImbueFactionIdentity: return "Two-Slot";
+                case EIPModOptions.PresetImbueArcaneSurge: return "Tri-Slot";
+                case EIPModOptions.PresetImbueElementalChaos: return "Tri-Slot+";
+                case EIPModOptions.PresetImbueRandomized: return "Random";
+                default: return "Default";
+            }
+        }
+
+        private static string FriendlyChanceLabel(string preset)
+        {
+            switch (EIPModOptions.NormalizeChancePreset(preset))
+            {
+                case EIPModOptions.PresetChanceBalanced: return "Increased";
+                case EIPModOptions.PresetChanceAggressive: return "High";
+                case EIPModOptions.PresetChanceRelentless: return "Very High";
+                case EIPModOptions.PresetChanceOverflow: return "Maximum";
+                default: return "Default";
+            }
+        }
+
+        private static string FriendlyStrengthLabel(string preset)
+        {
+            switch (EIPModOptions.NormalizeStrengthPreset(preset))
+            {
+                case EIPModOptions.PresetStrengthStandard: return "Increased";
+                case EIPModOptions.PresetStrengthEmpowered: return "High";
+                case EIPModOptions.PresetStrengthOvercharged: return "Very High";
+                case EIPModOptions.PresetStrengthCataclysmic: return "Maximum";
+                default: return "Default";
             }
         }
 

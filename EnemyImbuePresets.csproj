@@ -14,7 +14,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="**\*.cs" Exclude="References\**;obj\**;bin\**;builds\**" />
+    <Compile Include="**\*.cs" Exclude="References\**;obj\**;bin\**;builds\**;*.Tests\**" />
   </ItemGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">

@@ -7,6 +7,7 @@ $ErrorActionPreference = "Stop"
 $repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
 $repoRootPath = $repoRoot.Path
 $projectPath = Join-Path $repoRootPath "EnemyImbuePresets.csproj"
+$testProjectPath = Join-Path $repoRootPath "EnemyImbuePresets.Tests\EnemyImbuePresets.Tests.csproj"
 
 $libsPath = Join-Path (Split-Path $repoRootPath -Parent) "libs"
 $requiredDlls = @(
@@ -28,21 +29,35 @@ foreach ($dll in $requiredDlls) {
 }
 
 if ($missingDlls.Count -gt 0) {
-    Write-Warning "[EIP-CI] Skipping builds because game libraries are missing in $libsPath."
-    Write-Warning "[EIP-CI] Missing: $($missingDlls -join ', ')"
-    exit 0
+    $msg = "[EIP-CI] Missing game libraries in ${libsPath}: $($missingDlls -join ', ')"
+    if ($Strict) {
+        Write-Error $msg
+        exit 1
+    }
+
+    Write-Warning $msg
+    Write-Warning "[EIP-CI] Skipping Release/Nomad build in non-strict mode."
+}
+else {
+    Write-Host "[EIP-CI] Building Release..."
+    dotnet build $projectPath -c Release | Out-Host
+    if ($LASTEXITCODE -ne 0) {
+        exit $LASTEXITCODE
+    }
+
+    Write-Host "[EIP-CI] Building Nomad..."
+    dotnet build $projectPath -c Nomad | Out-Host
+    if ($LASTEXITCODE -ne 0) {
+        exit $LASTEXITCODE
+    }
 }
 
-Write-Host "[EIP-CI] Building Release..."
-dotnet build $projectPath -c Release | Out-Host
-if ($LASTEXITCODE -ne 0) {
-    exit $LASTEXITCODE
-}
-
-Write-Host "[EIP-CI] Building Nomad..."
-dotnet build $projectPath -c Nomad | Out-Host
-if ($LASTEXITCODE -ne 0) {
-    exit $LASTEXITCODE
+if (Test-Path $testProjectPath) {
+    Write-Host "[EIP-CI] Running tests..."
+    dotnet test $testProjectPath -c Release --nologo -v minimal | Out-Host
+    if ($LASTEXITCODE -ne 0) {
+        exit $LASTEXITCODE
+    }
 }
 
 Write-Host "[EIP-CI] Smoke checks complete."

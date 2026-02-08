@@ -47,3 +47,21 @@
 - **Issue**: Using a broad options hash for runtime refresh can cause unnecessary assignment rerolls.
 - **Context**: Diagnostics/UI option changes and preset-sync normalization can trigger "configuration changed" refreshes even when assignment inputs are unchanged.
 - **Solution/Workaround**: Use a dedicated assignment-state hash (enemy-type eligibility + per-faction enabled/spell/chance/strength values) for runtime refresh decisions.
+
+## Entry 9
+
+- **Issue**: One-off per-creature logs are hard to compare across long playthroughs when tuning presets.
+- **Context**: Manual inspection misses aggregate patterns (for example, why most enemies are skipped or why transfer failures spike).
+- **Solution/Workaround**: Use periodic `diag evt=summary` logs and set `Log Level` to `Diagnostics` or `Verbose` when collecting repro logs.
+
+## Entry 10
+
+- **Issue**: Enemy-type profile behavior can become confusing if runtime classification and UI toggles use different mental models.
+- **Context**: The current model uses five archetypes (`Mage`, `Mage Bow`, `Mage Melee`, `Bow`, `Melee`) and presets batch-write those toggles; lore/default caster behavior depends on caster archetypes, not a legacy boolean.
+- **Solution/Workaround**: Keep classification, preset matrices, sync logging, and docs/XLSX generator aligned to the same five-archetype vocabulary whenever enemy-type logic changes.
+
+## Entry 11
+
+- **Issue**: Runtime enemy archetypes can oscillate during weapon swaps or spawn initialization, causing noisy rerolls.
+- **Context**: Archer/melee hints can appear a frame or two before/after caster signals, especially during hand-item transitions.
+- **Solution/Workaround**: Keep a short archetype stabilization cache window, expose uncertain fallback mode (`Treat As Melee` vs `Skip Enemy`), and use `Dump Enemy Type Detection` to inspect evidence before changing profile defaults.

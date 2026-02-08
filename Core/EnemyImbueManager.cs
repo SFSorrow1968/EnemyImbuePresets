@@ -14,7 +14,7 @@ namespace EnemyImbuePresets.Core
             public Creature Creature;
             public int FactionId;
             public int ProfileHash;
-            public bool IsCasterType;
+            public EIPModOptions.EnemyTypeArchetype EnemyArchetype;
             public bool RollPassed;
             public float RollPercent;
             public int SelectedSlot;
@@ -36,12 +36,19 @@ namespace EnemyImbuePresets.Core
         private static readonly string[] ThrowingKeywords = { "throw", "javelin", "kunai", "shuriken", "star" };
         private static readonly string[] CasterIdentityKeywords = { "mage", "wizard", "sorcer", "sorcery", "warlock", "witch", "druid", "shaman", "caster", "spell", "magic", "arcane", "pyro", "electro", "cryo" };
         private static readonly string[] CasterWeaponKeywords = { "staff", "wand", "rod", "cane", "scepter", "sceptre", "orb", "focus", "grimoire", "tome", "spell" };
+        private static readonly string[] ArcherIdentityKeywords = { "archer", "bow", "crossbow", "ranger", "hunter", "marksman", "sniper", "ranged" };
+        private static readonly string[] MeleeIdentityKeywords = { "melee", "warrior", "knight", "brute", "duelist", "swordsman", "guard" };
         private const float CasterNegativeRecheckSeconds = 1.5f;
+        private const float EnemyTypeStabilizeSeconds = 1.75f;
         private const float CasterSpellRefreshSeconds = 0.2f;
         private const float ApplyLogCleanupIntervalSeconds = 15f;
         private const float ApplyLogEntryExpirySeconds = 8f;
         private const int ApplyLogSoftLimit = 512;
         private const int ApplyLogHardLimit = 2048;
+        private const float DuplicateApplyWindowSeconds = 0.75f;
+        private const float ApplyStateEntryExpirySeconds = 12f;
+        private const int ApplyStateSoftLimit = 512;
+        private const int ApplyStateHardLimit = 2048;
 
         private readonly Dictionary<int, TrackedCreatureState> tracked = new Dictionary<int, TrackedCreatureState>();
         private readonly Dictionary<string, SpellCastCharge> spellCache = new Dictionary<string, SpellCastCharge>(StringComparer.OrdinalIgnoreCase);
@@ -49,11 +56,14 @@ namespace EnemyImbuePresets.Core
         private readonly HashSet<string> missingSpellIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         private readonly HashSet<string> transferFailureKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         private readonly Dictionary<string, float> applyLogTimes = new Dictionary<string, float>(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<int, CachedItemApplyState> itemApplyStateById = new Dictionary<int, CachedItemApplyState>();
         private readonly HashSet<int> casterPositiveCache = new HashSet<int>();
         private readonly Dictionary<int, float> casterNegativeRetryUntil = new Dictionary<int, float>();
         private readonly Dictionary<int, CachedCasterSpell> casterSpellCache = new Dictionary<int, CachedCasterSpell>();
+        private readonly Dictionary<int, CachedEnemyTypeArchetype> enemyArchetypeCache = new Dictionary<int, CachedEnemyTypeArchetype>();
         private readonly List<int> removeBuffer = new List<int>();
         private readonly List<string> removeLogKeyBuffer = new List<string>(64);
+        private readonly List<int> removeItemStateKeyBuffer = new List<int>(64);
 
         private float nextUpdateTime;
         private float nextRescanTime;
@@ -64,6 +74,43 @@ namespace EnemyImbuePresets.Core
         {
             public string SpellId;
             public float RefreshAt;
+        }
+
+        private struct CachedItemApplyState
+        {
+            public string SpellId;
+            public float StrengthRatio;
+            public float LastWriteTime;
+        }
+
+        private struct CachedEnemyTypeArchetype
+        {
+            public EIPModOptions.EnemyTypeArchetype Archetype;
+            public float StabilizeUntil;
+        }
+
+        private struct CasterDetectionDetail
+        {
+            public bool CachedPositive;
+            public bool NegativeRetryBlocked;
+            public bool ByIdentity;
+            public bool ByHeldItems;
+            public bool ByComponents;
+        }
+
+        private struct EnemyTypeEvidence
+        {
+            public CasterDetectionDetail Caster;
+            public bool ArcherBySpawner;
+            public bool ArcherByHeldItems;
+            public bool ArcherByKeywords;
+            public bool MeleeBySpawner;
+            public bool MeleeByHeldItems;
+            public bool MeleeByKeywords;
+
+            public bool HasCasterEvidence => Caster.CachedPositive || Caster.ByIdentity || Caster.ByHeldItems || Caster.ByComponents;
+            public bool HasArcherEvidence => ArcherBySpawner || ArcherByHeldItems || ArcherByKeywords;
+            public bool HasMeleeEvidence => MeleeBySpawner || MeleeByHeldItems || MeleeByKeywords;
         }
 
         public static EnemyImbueManager Instance { get; } = new EnemyImbueManager();
@@ -80,9 +127,11 @@ namespace EnemyImbuePresets.Core
             missingSpellIds.Clear();
             transferFailureKeys.Clear();
             applyLogTimes.Clear();
+            itemApplyStateById.Clear();
             casterPositiveCache.Clear();
             casterNegativeRetryUntil.Clear();
             casterSpellCache.Clear();
+            enemyArchetypeCache.Clear();
             nextUpdateTime = 0f;
             nextRescanTime = 0f;
             nextApplyLogCleanupTime = 0f;
@@ -100,9 +149,11 @@ namespace EnemyImbuePresets.Core
             missingSpellIds.Clear();
             transferFailureKeys.Clear();
             applyLogTimes.Clear();
+            itemApplyStateById.Clear();
             casterPositiveCache.Clear();
             casterNegativeRetryUntil.Clear();
             casterSpellCache.Clear();
+            enemyArchetypeCache.Clear();
             lastAssignmentHash = int.MinValue;
             EIPLog.Info("Enemy imbue manager shut down.");
         }
@@ -128,8 +179,11 @@ namespace EnemyImbuePresets.Core
             int assignmentHash = EIPModOptions.GetAssignmentStateHash();
             if (assignmentHash != lastAssignmentHash)
             {
+                int previousHash = lastAssignmentHash;
                 lastAssignmentHash = assignmentHash;
+                enemyArchetypeCache.Clear();
                 TrackCurrentCreatures(forceRefresh: true, now);
+                EIPTelemetry.RecordConfigRefresh(previousHash, assignmentHash);
                 EIPLog.Info("Configuration changed, refreshed tracked assignments.", true);
             }
 
@@ -162,6 +216,7 @@ namespace EnemyImbuePresets.Core
             casterPositiveCache.Remove(key);
             casterNegativeRetryUntil.Remove(key);
             casterSpellCache.Remove(key);
+            enemyArchetypeCache.Remove(key);
         }
 
         public void OnLevelUnload(LevelData levelData, LevelData.Mode mode, EventTime eventTime)
@@ -177,9 +232,11 @@ namespace EnemyImbuePresets.Core
             missingSpellIds.Clear();
             transferFailureKeys.Clear();
             applyLogTimes.Clear();
+            itemApplyStateById.Clear();
             casterPositiveCache.Clear();
             casterNegativeRetryUntil.Clear();
             casterSpellCache.Clear();
+            enemyArchetypeCache.Clear();
             lastAssignmentHash = int.MinValue;
             EIPLog.Info("Level unload detected, cleared tracked states.");
         }
@@ -206,35 +263,59 @@ namespace EnemyImbuePresets.Core
 
         private void EnsureTracked(Creature creature, bool fromSpawnEvent, bool forceRefresh, float now)
         {
+            if (creature == null)
+            {
+                EIPTelemetry.RecordTrackSkip("null_creature", fromSpawnEvent);
+                return;
+            }
+
             if (!IsEligibleCreature(creature))
             {
+                EIPTelemetry.RecordTrackSkip(GetIneligibleReason(creature), fromSpawnEvent);
                 return;
             }
 
             if (!EIPModOptions.TryResolveFactionProfile(creature.factionId, out EIPModOptions.FactionProfile profile))
             {
                 tracked.Remove(creature.GetInstanceID());
+                EIPTelemetry.RecordTrackSkip("no_faction_profile", fromSpawnEvent);
                 return;
             }
 
             int key = creature.GetInstanceID();
-            bool isCasterType = IsRuntimeCaster(creature, now);
-            if (!EIPModOptions.IsEnemyTypeEligible(isCasterType))
+            if (!TryResolveEnemyTypeArchetype(creature, now, out EIPModOptions.EnemyTypeArchetype enemyArchetype, out bool uncertainSkipped, out bool stabilizedFromCache))
             {
                 tracked.Remove(key);
+                string reason = uncertainSkipped
+                    ? "enemytype_uncertain_skipped"
+                    : "enemytype_detection_failed";
+                EIPTelemetry.RecordTrackSkip(reason, fromSpawnEvent);
+                return;
+            }
+
+            if (!EIPModOptions.IsEnemyTypeEligible(enemyArchetype))
+            {
+                tracked.Remove(key);
+                EIPTelemetry.RecordTrackSkip("enemytype_ineligible_" + EIPModOptions.GetEnemyTypeToken(enemyArchetype), fromSpawnEvent);
                 return;
             }
 
             if (!profile.Enabled)
             {
                 tracked.Remove(key);
+                EIPTelemetry.RecordTrackSkip("faction_disabled", fromSpawnEvent);
                 return;
             }
 
             bool hasExisting = tracked.TryGetValue(key, out TrackedCreatureState existing);
-            bool shouldReroll = forceRefresh || !hasExisting || existing.FactionId != creature.factionId || existing.ProfileHash != profile.ProfileHash;
+            bool shouldReroll = forceRefresh ||
+                               !hasExisting ||
+                               existing.FactionId != creature.factionId ||
+                               existing.ProfileHash != profile.ProfileHash ||
+                               existing.EnemyArchetype != enemyArchetype;
             if (!shouldReroll)
             {
+                EIPTelemetry.RecordTrackReuse(fromSpawnEvent);
                 return;
             }
 
@@ -245,7 +326,7 @@ namespace EnemyImbuePresets.Core
                 Creature = creature,
                 FactionId = creature.factionId,
                 ProfileHash = profile.ProfileHash,
-                IsCasterType = isCasterType,
+                EnemyArchetype = enemyArchetype,
                 RollPassed = rollPassed,
                 RollPercent = rollPercent,
                 SelectedSlot = slotIndex,
@@ -256,13 +337,17 @@ namespace EnemyImbuePresets.Core
             };
 
             tracked[key] = state;
+            EIPTelemetry.RecordTrackRollResult(fromSpawnEvent, rollPassed);
 
             if (EIPLog.VerboseEnabled)
             {
+                string correlationId = BuildCorrelationId(creature, now);
                 EIPLog.Info(
                     "Track " + BuildCreatureLabel(creature) +
+                    " cid=" + correlationId +
                     " factionProfile=" + EIPModOptions.GetFactionShortName(profile.FactionIndex) +
-                    " enemyType=" + (isCasterType ? "Caster" : "NonCaster") +
+                    " enemyType=" + EIPModOptions.GetEnemyTypeDisplayName(enemyArchetype) +
+                    (stabilizedFromCache ? " stabilized=true" : string.Empty) +
                     " slot=" + (rollPassed ? slotIndex.ToString() : "none") +
                     " roll=" + rollPercent.ToString("F1") +
                     " result=" + (rollPassed ? "APPLY" : "SKIP") +
@@ -273,11 +358,13 @@ namespace EnemyImbuePresets.Core
             }
             else if (fromSpawnEvent)
             {
+                string correlationId = BuildCorrelationId(creature, now);
                 EIPLog.Info(
                     "Spawn " + BuildCreatureLabel(creature) +
+                    " cid=" + correlationId +
                     " result=" + (rollPassed ? "APPLY" : "SKIP") +
                     (rollPassed ? " slot=" + slotIndex + " spell=" + state.BaseSpellId : string.Empty) +
-                    " enemyType=" + (isCasterType ? "Caster" : "NonCaster"));
+                    " enemyType=" + EIPModOptions.GetEnemyTypeDisplayName(enemyArchetype));
             }
 
             if (rollPassed)
@@ -355,8 +442,326 @@ namespace EnemyImbuePresets.Core
             return true;
         }
 
+        private bool TryResolveEnemyTypeArchetype(
+            Creature creature,
+            float now,
+            out EIPModOptions.EnemyTypeArchetype archetype,
+            out bool uncertainSkipped,
+            out bool stabilizedFromCache)
+        {
+            archetype = EIPModOptions.EnemyTypeArchetype.Melee;
+            uncertainSkipped = false;
+            stabilizedFromCache = false;
+
+            if (creature == null)
+            {
+                return false;
+            }
+
+            EnemyTypeEvidence evidence = GatherEnemyTypeEvidence(creature, now);
+            EIPModOptions.EnemyTypeArchetype candidate = ResolveArchetypeFromEvidence(evidence, out bool uncertain);
+            int key = creature.GetInstanceID();
+
+            if (enemyArchetypeCache.TryGetValue(key, out CachedEnemyTypeArchetype cached) &&
+                cached.Archetype != candidate &&
+                now < cached.StabilizeUntil &&
+                !HasStrongArchetypeChangeEvidence(candidate, evidence))
+            {
+                candidate = cached.Archetype;
+                uncertain = false;
+                stabilizedFromCache = true;
+            }
+
+            archetype = candidate;
+            enemyArchetypeCache[key] = new CachedEnemyTypeArchetype
+            {
+                Archetype = archetype,
+                StabilizeUntil = now + EnemyTypeStabilizeSeconds
+            };
+
+            if (uncertain && EIPModOptions.ShouldSkipUncertainEnemyTypes())
+            {
+                uncertainSkipped = true;
+                return false;
+            }
+
+            return true;
+        }
+
+        private EnemyTypeEvidence GatherEnemyTypeEvidence(Creature creature, float now)
+        {
+            EnemyTypeEvidence evidence = default;
+
+            _ = IsRuntimeCaster(creature, now, out CasterDetectionDetail casterDetail);
+            evidence.Caster = casterDetail;
+            evidence.ArcherBySpawner = HasRangedSpawnerHint(creature);
+            evidence.ArcherByHeldItems = LooksLikeRangedByHeldItems(creature);
+            evidence.ArcherByKeywords = HasCreatureTypeKeyword(creature, ArcherIdentityKeywords);
+            evidence.MeleeBySpawner = HasMeleeSpawnerHint(creature);
+            evidence.MeleeByHeldItems = LooksLikeMeleeByHeldItems(creature);
+            evidence.MeleeByKeywords = HasCreatureTypeKeyword(creature, MeleeIdentityKeywords);
+            return evidence;
+        }
+
+        private static EIPModOptions.EnemyTypeArchetype ResolveArchetypeFromEvidence(EnemyTypeEvidence evidence, out bool uncertain)
+        {
+            bool isCaster = evidence.HasCasterEvidence;
+            bool isArcher = evidence.HasArcherEvidence;
+            bool isMelee = evidence.HasMeleeEvidence;
+            uncertain = !isCaster && !isArcher && !isMelee;
+
+            if (isCaster)
+            {
+                if (isArcher)
+                {
+                    return EIPModOptions.EnemyTypeArchetype.MageBow;
+                }
+                if (isMelee)
+                {
+                    return EIPModOptions.EnemyTypeArchetype.MageMelee;
+                }
+                return EIPModOptions.EnemyTypeArchetype.Mage;
+            }
+
+            return isArcher
+                ? EIPModOptions.EnemyTypeArchetype.Bow
+                : EIPModOptions.EnemyTypeArchetype.Melee;
+        }
+
+        private static bool HasStrongArchetypeChangeEvidence(EIPModOptions.EnemyTypeArchetype candidate, EnemyTypeEvidence evidence)
+        {
+            switch (candidate)
+            {
+                case EIPModOptions.EnemyTypeArchetype.Mage:
+                    return evidence.HasCasterEvidence;
+                case EIPModOptions.EnemyTypeArchetype.MageBow:
+                    return evidence.HasCasterEvidence && evidence.HasArcherEvidence;
+                case EIPModOptions.EnemyTypeArchetype.MageMelee:
+                    return evidence.HasCasterEvidence && evidence.HasMeleeEvidence;
+                case EIPModOptions.EnemyTypeArchetype.Bow:
+                    return evidence.HasArcherEvidence;
+                case EIPModOptions.EnemyTypeArchetype.Melee:
+                    return evidence.HasMeleeEvidence;
+                default:
+                    return false;
+            }
+        }
+
+        private bool IsRuntimeArcher(Creature creature)
+        {
+            if (creature == null)
+            {
+                return false;
+            }
+
+            if (HasRangedSpawnerHint(creature))
+            {
+                return true;
+            }
+
+            if (LooksLikeRangedByHeldItems(creature))
+            {
+                return true;
+            }
+
+            return HasCreatureTypeKeyword(creature, ArcherIdentityKeywords);
+        }
+
+        private bool IsRuntimeMelee(Creature creature)
+        {
+            if (creature == null)
+            {
+                return false;
+            }
+
+            if (HasMeleeSpawnerHint(creature))
+            {
+                return true;
+            }
+
+            if (LooksLikeMeleeByHeldItems(creature))
+            {
+                return true;
+            }
+
+            return HasCreatureTypeKeyword(creature, MeleeIdentityKeywords);
+        }
+
+        private bool LooksLikeRangedByHeldItems(Creature creature)
+        {
+            Item left = creature?.handLeft?.grabbedHandle?.item;
+            Item right = creature?.handRight?.grabbedHandle?.item;
+            return IsBowItem(left) || IsBowItem(right);
+        }
+
+        private bool LooksLikeMeleeByHeldItems(Creature creature)
+        {
+            Item left = creature?.handLeft?.grabbedHandle?.item;
+            Item right = creature?.handRight?.grabbedHandle?.item;
+            return IsMeleeWeaponItem(left) || IsMeleeWeaponItem(right);
+        }
+
+        private bool IsBowItem(Item item)
+        {
+            if (item == null)
+            {
+                return false;
+            }
+
+            EIPModOptions.WeaponFilterBucket bucket = ResolveWeaponBucket(item);
+            return bucket == EIPModOptions.WeaponFilterBucket.Bow || bucket == EIPModOptions.WeaponFilterBucket.Arrow;
+        }
+
+        private bool IsMeleeWeaponItem(Item item)
+        {
+            if (item == null)
+            {
+                return false;
+            }
+
+            EIPModOptions.WeaponFilterBucket bucket = ResolveWeaponBucket(item);
+            switch (bucket)
+            {
+                case EIPModOptions.WeaponFilterBucket.Dagger:
+                case EIPModOptions.WeaponFilterBucket.Sword:
+                case EIPModOptions.WeaponFilterBucket.Axe:
+                case EIPModOptions.WeaponFilterBucket.Mace:
+                case EIPModOptions.WeaponFilterBucket.Spear:
+                case EIPModOptions.WeaponFilterBucket.Shield:
+                case EIPModOptions.WeaponFilterBucket.Throwing:
+                    return true;
+                default:
+                    return false;
+            }
+        }
+
+        private static bool HasRangedSpawnerHint(Creature creature)
+        {
+            CreatureSpawner spawner = creature?.creatureSpawner;
+            if (spawner != null)
+            {
+                switch (spawner.enemyConfigType)
+                {
+                    case CreatureSpawner.EnemyConfigType.PatrolRanged:
+                    case CreatureSpawner.EnemyConfigType.AlertRanged:
+                    case CreatureSpawner.EnemyConfigType.RareRanged:
+                        return true;
+                }
+
+                if (ContainsAny((spawner.enemyConfigType.ToString() ?? string.Empty).ToLowerInvariant(), ArcherIdentityKeywords))
+                {
+                    return true;
+                }
+
+                string tableId = spawner.creatureTableID;
+                if (!string.IsNullOrWhiteSpace(tableId) &&
+                    ContainsAny(tableId.ToLowerInvariant(), ArcherIdentityKeywords))
+                {
+                    return true;
+                }
+            }
+
+            WaveData.Group group = creature?.spawnGroup;
+            if (group != null)
+            {
+                if (!string.IsNullOrWhiteSpace(group.referenceID) &&
+                    ContainsAny(group.referenceID.ToLowerInvariant(), ArcherIdentityKeywords))
+                {
+                    return true;
+                }
+
+                if (!string.IsNullOrWhiteSpace(group.creatureTableID) &&
+                    ContainsAny(group.creatureTableID.ToLowerInvariant(), ArcherIdentityKeywords))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private static bool HasMeleeSpawnerHint(Creature creature)
+        {
+            CreatureSpawner spawner = creature?.creatureSpawner;
+            if (spawner != null)
+            {
+                switch (spawner.enemyConfigType)
+                {
+                    case CreatureSpawner.EnemyConfigType.PatrolMelee:
+                    case CreatureSpawner.EnemyConfigType.AlertMelee:
+                    case CreatureSpawner.EnemyConfigType.RareMelee:
+                        return true;
+                }
+
+                if (ContainsAny((spawner.enemyConfigType.ToString() ?? string.Empty).ToLowerInvariant(), MeleeIdentityKeywords))
+                {
+                    return true;
+                }
+
+                string tableId = spawner.creatureTableID;
+                if (!string.IsNullOrWhiteSpace(tableId) &&
+                    ContainsAny(tableId.ToLowerInvariant(), MeleeIdentityKeywords))
+                {
+                    return true;
+                }
+            }
+
+            WaveData.Group group = creature?.spawnGroup;
+            if (group != null)
+            {
+                if (!string.IsNullOrWhiteSpace(group.referenceID) &&
+                    ContainsAny(group.referenceID.ToLowerInvariant(), MeleeIdentityKeywords))
+                {
+                    return true;
+                }
+
+                if (!string.IsNullOrWhiteSpace(group.creatureTableID) &&
+                    ContainsAny(group.creatureTableID.ToLowerInvariant(), MeleeIdentityKeywords))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private static bool HasCreatureTypeKeyword(Creature creature, string[] keywords)
+        {
+            if (creature == null || keywords == null || keywords.Length == 0)
+            {
+                return false;
+            }
+
+            if (!string.IsNullOrWhiteSpace(creature.data?.id) &&
+                ContainsAny(creature.data.id.ToLowerInvariant(), keywords))
+            {
+                return true;
+            }
+
+            if (!string.IsNullOrWhiteSpace(creature.name) &&
+                ContainsAny(creature.name.ToLowerInvariant(), keywords))
+            {
+                return true;
+            }
+
+            string brainId = creature.data?.brainId;
+            if (!string.IsNullOrWhiteSpace(brainId) &&
+                ContainsAny(brainId.ToLowerInvariant(), keywords))
+            {
+                return true;
+            }
+
+            return false;
+        }
+
         private bool IsRuntimeCaster(Creature creature, float now)
         {
+            return IsRuntimeCaster(creature, now, out _);
+        }
+
+        private bool IsRuntimeCaster(Creature creature, float now, out CasterDetectionDetail detail)
+        {
+            detail = default;
             if (creature == null)
             {
                 return false;
@@ -365,15 +770,21 @@ namespace EnemyImbuePresets.Core
             int key = creature.GetInstanceID();
             if (casterPositiveCache.Contains(key))
             {
+                detail.CachedPositive = true;
                 return true;
             }
 
             if (casterNegativeRetryUntil.TryGetValue(key, out float retryUntil) && now < retryUntil)
             {
+                detail.NegativeRetryBlocked = true;
                 return false;
             }
 
-            bool detected = DetectRuntimeCaster(creature);
+            bool detected = DetectRuntimeCaster(creature, out bool byIdentity, out bool byHeldItems, out bool byComponents);
+            detail.ByIdentity = byIdentity;
+            detail.ByHeldItems = byHeldItems;
+            detail.ByComponents = byComponents;
+
             if (detected)
             {
                 casterPositiveCache.Add(key);
@@ -385,29 +796,21 @@ namespace EnemyImbuePresets.Core
             return false;
         }
 
-        private static bool DetectRuntimeCaster(Creature creature)
+        private static bool DetectRuntimeCaster(Creature creature, out bool byIdentity, out bool byHeldItems, out bool byComponents)
         {
+            byIdentity = false;
+            byHeldItems = false;
+            byComponents = false;
+
             if (creature == null)
             {
                 return false;
             }
 
-            if (LooksLikeCasterByIdentity(creature))
-            {
-                return true;
-            }
-
-            if (LooksLikeCasterByHeldItems(creature))
-            {
-                return true;
-            }
-
-            if (LooksLikeCasterByComponents(creature))
-            {
-                return true;
-            }
-
-            return false;
+            byIdentity = LooksLikeCasterByIdentity(creature);
+            byHeldItems = LooksLikeCasterByHeldItems(creature);
+            byComponents = LooksLikeCasterByComponents(creature);
+            return byIdentity || byHeldItems || byComponents;
         }
 
         private static bool LooksLikeCasterByIdentity(Creature creature)
@@ -508,6 +911,31 @@ namespace EnemyImbuePresets.Core
                    !IsPlayerControlledCreature(creature);
         }
 
+        private static string GetIneligibleReason(Creature creature)
+        {
+            if (creature == null)
+            {
+                return "null_creature";
+            }
+
+            if (creature.gameObject == null)
+            {
+                return "missing_gameobject";
+            }
+
+            if (!creature.gameObject.activeInHierarchy)
+            {
+                return "inactive_creature";
+            }
+
+            if (IsPlayerControlledCreature(creature))
+            {
+                return "player_controlled";
+            }
+
+            return "ineligible";
+        }
+
         private static bool IsPlayerControlledCreature(Creature creature)
         {
             if (creature == null)
@@ -564,7 +992,12 @@ namespace EnemyImbuePresets.Core
 
             for (int i = 0; i < removeBuffer.Count; i++)
             {
-                tracked.Remove(removeBuffer[i]);
+                int key = removeBuffer[i];
+                tracked.Remove(key);
+                casterPositiveCache.Remove(key);
+                casterNegativeRetryUntil.Remove(key);
+                casterSpellCache.Remove(key);
+                enemyArchetypeCache.Remove(key);
             }
         }
 
@@ -579,6 +1012,7 @@ namespace EnemyImbuePresets.Core
             Item right = state.Creature.handRight?.grabbedHandle?.item;
             if (left == null && right == null)
             {
+                EIPTelemetry.RecordApplyNoHeldItems();
                 return;
             }
 
@@ -603,33 +1037,64 @@ namespace EnemyImbuePresets.Core
                 return false;
             }
 
+            EIPTelemetry.RecordApplyAttempt();
             EIPModOptions.WeaponFilterBucket bucket = ResolveWeaponBucket(item);
-            string spellId = DetermineSpellIdForItem(state, creature, now);
+            string spellId = DetermineSpellIdForItem(state, creature, now, out string baseSpellId, out bool casterOverrideUsed);
+            if (casterOverrideUsed)
+            {
+                EIPTelemetry.RecordCasterSpellOverride();
+                if (EIPLog.VerboseEnabled)
+                {
+                    string itemId = item.data?.id ?? item.itemId ?? item.name;
+                    EIPLog.Info(
+                        "Caster spell override for " + itemId +
+                        " cid=" + BuildCorrelationId(creature, now) +
+                        " baseSpell=" + (string.IsNullOrWhiteSpace(baseSpellId) ? "None" : baseSpellId) +
+                        " resolvedSpell=" + (string.IsNullOrWhiteSpace(spellId) ? "None" : spellId),
+                        true);
+                }
+            }
 
             if (string.IsNullOrWhiteSpace(spellId))
             {
-                return ClearItemImbues(item);
+                bool cleared = ClearItemImbues(item);
+                if (cleared)
+                {
+                    EIPTelemetry.RecordItemClear();
+                }
+                EIPTelemetry.RecordApplyOutcome(cleared);
+                return cleared;
             }
 
             SpellCastCharge spellData = GetSpellData(spellId);
             if (spellData == null)
             {
+                EIPTelemetry.RecordApplySkipReason("spell_lookup_failed");
+                EIPTelemetry.RecordApplyOutcome(changed: false);
                 return false;
             }
 
-            return ApplySpellToItem(item, creature, spellData, state.StrengthRatio, bucket, force, now);
+            bool applied = ApplySpellToItem(item, creature, spellData, state.StrengthRatio, bucket, force, now);
+            if (applied)
+            {
+                EIPTelemetry.RecordItemWrite();
+            }
+            EIPTelemetry.RecordApplyOutcome(applied);
+            return applied;
         }
 
-        private string DetermineSpellIdForItem(TrackedCreatureState state, Creature creature, float now)
+        private string DetermineSpellIdForItem(TrackedCreatureState state, Creature creature, float now, out string baseSpellId, out bool casterOverrideUsed)
         {
             string fallbackSpellId = EIPModOptions.CanonicalSpellId(state?.BaseSpellId);
+            baseSpellId = fallbackSpellId;
+            casterOverrideUsed = false;
             if (state == null || creature == null)
             {
                 return fallbackSpellId;
             }
 
             bool loreFriendly = EIPModOptions.IsLoreFriendlyProfileSelected();
-            if (!loreFriendly || !state.IsCasterType)
+            if (!loreFriendly || !EIPModOptions.IsCasterArchetype(state.EnemyArchetype))
             {
                 return fallbackSpellId;
             }
@@ -642,7 +1107,9 @@ namespace EnemyImbuePresets.Core
             SpellCastCharge casterSpellData = GetSpellData(casterSpellId);
             if (casterSpellData != null)
             {
-                return casterSpellData.id;
+                string resolvedSpellId = casterSpellData.id;
+                casterOverrideUsed = !string.Equals(resolvedSpellId, fallbackSpellId, StringComparison.OrdinalIgnoreCase);
+                return resolvedSpellId;
             }
 
             return fallbackSpellId;
@@ -857,6 +1324,11 @@ namespace EnemyImbuePresets.Core
                 changed = true;
             }
 
+            if (changed)
+            {
+                itemApplyStateById.Remove(item.GetInstanceID());
+            }
+
             return changed;
         }
 
@@ -864,6 +1336,17 @@ namespace EnemyImbuePresets.Core
         {
             if (item == null || item.imbues == null || item.imbues.Count == 0)
             {
+                EIPTelemetry.RecordApplySkipReason("item_has_no_imbue_slots");
+                return false;
+            }
+
+            int itemInstanceId = item.GetInstanceID();
+            float clampedStrengthRatio = Mathf.Clamp01(strengthRatio);
+            if (!force &&
+                IsDuplicateApplyWindowActive(itemInstanceId, spellData.id, clampedStrengthRatio, now) &&
+                ItemAlreadyMatchesDesiredState(item, spellData.id, clampedStrengthRatio))
+            {
+                EIPTelemetry.RecordApplySkipReason("duplicate_apply_window");
                 return false;
             }
 
@@ -876,7 +1359,7 @@ namespace EnemyImbuePresets.Core
                     continue;
                 }
 
-                float targetEnergy = Mathf.Clamp01(strengthRatio) * imbue.maxEnergy;
+                float targetEnergy = clampedStrengthRatio * imbue.maxEnergy;
                 bool spellMismatch = imbue.spellCastBase == null || !string.Equals(imbue.spellCastBase.id, spellData.id, StringComparison.OrdinalIgnoreCase);
 
                 if (spellMismatch)
@@ -893,6 +1376,8 @@ namespace EnemyImbuePresets.Core
                         string key = itemId + "|" + spellData.id;
                         if (transferFailureKeys.Add(key))
                         {
+                            EIPTelemetry.RecordTransferFailure();
+                            EIPTelemetry.RecordApplySkipReason("imbue_transfer_blocked");
                             string requiredSpell = imbue.colliderGroup?.imbueCustomSpellID;
                             EIPLog.Warn(
                                 "Imbue transfer blocked for item " + itemId +
@@ -939,9 +1424,19 @@ namespace EnemyImbuePresets.Core
                     EIPLog.Info(
                         "Imbued item " + itemId +
                         " with " + spellData.id +
-                        " at " + (strengthRatio * 100f).ToString("F0") + "% (bucket=" + bucket + ").",
+                        " at " + (clampedStrengthRatio * 100f).ToString("F0") + "% (bucket=" + bucket + ").",
                         true);
                 }
+            }
+
+            if (changed)
+            {
+                itemApplyStateById[itemInstanceId] = new CachedItemApplyState
+                {
+                    SpellId = spellData.id,
+                    StrengthRatio = clampedStrengthRatio,
+                    LastWriteTime = now
+                };
             }
 
             return changed;
@@ -1010,6 +1505,59 @@ namespace EnemyImbuePresets.Core
             }
 
             return item.name;
+        }
+
+        private bool IsDuplicateApplyWindowActive(int itemInstanceId, string spellId, float strengthRatio, float now)
+        {
+            if (!itemApplyStateById.TryGetValue(itemInstanceId, out CachedItemApplyState cached))
+            {
+                return false;
+            }
+
+            if (now - cached.LastWriteTime > DuplicateApplyWindowSeconds)
+            {
+                return false;
+            }
+
+            if (!string.Equals(cached.SpellId, spellId, StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+
+            return Mathf.Abs(cached.StrengthRatio - strengthRatio) <= 0.01f;
+        }
+
+        private static bool ItemAlreadyMatchesDesiredState(Item item, string spellId, float strengthRatio)
+        {
+            if (item == null || item.imbues == null || item.imbues.Count == 0)
+            {
+                return false;
+            }
+
+            bool inspectedAnyImbue = false;
+            for (int i = 0; i < item.imbues.Count; i++)
+            {
+                Imbue imbue = item.imbues[i];
+                if (imbue == null || imbue.colliderGroup == null || imbue.colliderGroup.modifier.imbueType == ColliderGroupData.ImbueType.None)
+                {
+                    continue;
+                }
+
+                inspectedAnyImbue = true;
+                if (imbue.spellCastBase == null || !string.Equals(imbue.spellCastBase.id, spellId, StringComparison.OrdinalIgnoreCase))
+                {
+                    return false;
+                }
+
+                float targetEnergy = strengthRatio * imbue.maxEnergy;
+                float tolerance = Mathf.Max(0.05f, imbue.maxEnergy * 0.02f);
+                if (Mathf.Abs(imbue.energy - targetEnergy) > tolerance)
+                {
+                    return false;
+                }
+            }
+
+            return inspectedAnyImbue;
         }
 
         private static EIPModOptions.WeaponFilterBucket ClassifyWeaponBucket(Item item)
@@ -1116,7 +1664,9 @@ namespace EnemyImbuePresets.Core
 
         private void CleanupApplyLogTimes(float now)
         {
-            if (now < nextApplyLogCleanupTime && applyLogTimes.Count < ApplyLogSoftLimit)
+            if (now < nextApplyLogCleanupTime &&
+                applyLogTimes.Count < ApplyLogSoftLimit &&
+                itemApplyStateById.Count < ApplyStateSoftLimit)
             {
                 return;
             }
@@ -1144,6 +1694,30 @@ namespace EnemyImbuePresets.Core
             if (applyLogTimes.Count > ApplyLogHardLimit)
             {
                 applyLogTimes.Clear();
+            }
+
+            if (itemApplyStateById.Count == 0)
+            {
+                return;
+            }
+
+            removeItemStateKeyBuffer.Clear();
+            foreach (KeyValuePair<int, CachedItemApplyState> pair in itemApplyStateById)
+            {
+                if (now - pair.Value.LastWriteTime > ApplyStateEntryExpirySeconds)
+                {
+                    removeItemStateKeyBuffer.Add(pair.Key);
+                }
+            }
+
+            for (int i = 0; i < removeItemStateKeyBuffer.Count; i++)
+            {
+                itemApplyStateById.Remove(removeItemStateKeyBuffer[i]);
+            }
+
+            if (itemApplyStateById.Count > ApplyStateHardLimit)
+            {
+                itemApplyStateById.Clear();
             }
         }
 
@@ -1290,6 +1864,12 @@ namespace EnemyImbuePresets.Core
                 DumpState();
             }
 
+            if (EIPModOptions.DumpEnemyTypes)
+            {
+                EIPModOptions.DumpEnemyTypes = false;
+                DumpEnemyTypeDetection();
+            }
+
             if (EIPModOptions.DumpWaveMap)
             {
                 EIPModOptions.DumpWaveMap = false;
@@ -1355,6 +1935,7 @@ namespace EnemyImbuePresets.Core
 
                 EIPLog.Info(
                     "State " + BuildCreatureLabel(state.Creature) +
+                    " enemyType=" + EIPModOptions.GetEnemyTypeDisplayName(state.EnemyArchetype) +
                     " slot=" + (state.RollPassed ? state.SelectedSlot.ToString() : "none") +
                     " roll=" + state.RollPercent.ToString("F1") +
                     " result=" + (state.RollPassed ? "pass" : "fail") +
@@ -1365,6 +1946,46 @@ namespace EnemyImbuePresets.Core
                         : string.Empty));
             }
         }
+
+        private void DumpEnemyTypeDetection()
+        {
+            float now = Time.unscaledTime;
+            EIPLog.Info(
+                "Enemy type detection dump: tracked=" + tracked.Count +
+                " fallback=" + EIPModOptions.GetEnemyTypeFallbackDisplayLabel() +
+                " stabilizeWindowSec=" + EnemyTypeStabilizeSeconds.ToString("F2"));
+
+            int logged = 0;
+            foreach (KeyValuePair<int, TrackedCreatureState> pair in tracked)
+            {
+                TrackedCreatureState state = pair.Value;
+                if (state == null || !IsEligibleCreature(state.Creature))
+                {
+                    continue;
+                }
+
+                EnemyTypeEvidence evidence = GatherEnemyTypeEvidence(state.Creature, now);
+                EIPModOptions.EnemyTypeArchetype rawArchetype = ResolveArchetypeFromEvidence(evidence, out bool uncertain);
+                bool resolved = TryResolveEnemyTypeArchetype(state.Creature, now, out EIPModOptions.EnemyTypeArchetype resolvedArchetype, out bool uncertainSkipped, out bool stabilizedFromCache);
+
+                EIPLog.Info(
+                    "EnemyType " + BuildCreatureLabel(state.Creature) +
+                    " tracked=" + EIPModOptions.GetEnemyTypeDisplayName(state.EnemyArchetype) +
+                    " raw=" + EIPModOptions.GetEnemyTypeDisplayName(rawArchetype) +
+                    " resolved=" + (resolved ? EIPModOptions.GetEnemyTypeDisplayName(resolvedArchetype) : "SKIP") +
+                    " uncertain=" + uncertain +
+                    " stabilized=" + stabilizedFromCache +
+                    " skipOnUncertain=" + uncertainSkipped +
+                    " signals={" + BuildEnemyTypeEvidenceSummary(evidence) + "}");
+                logged++;
+            }
+
+            if (logged == 0)
+            {
+                EIPLog.Warn("Enemy type detection dump found no eligible tracked creatures.");
+            }
+        }
+
         private void DumpWaveFactionMap()
         {
             List<WaveData> waves;
@@ -1474,6 +2095,28 @@ namespace EnemyImbuePresets.Core
             EIPLog.Info("Force reapply finished. creatures=" + applied);
         }
 
+        private static string BuildEnemyTypeEvidenceSummary(EnemyTypeEvidence evidence)
+        {
+            return
+                "caster[cache=" + BoolToken(evidence.Caster.CachedPositive) +
+                ",retryBlock=" + BoolToken(evidence.Caster.NegativeRetryBlocked) +
+                ",identity=" + BoolToken(evidence.Caster.ByIdentity) +
+                ",held=" + BoolToken(evidence.Caster.ByHeldItems) +
+                ",components=" + BoolToken(evidence.Caster.ByComponents) +
+                "],archer[spawner=" + BoolToken(evidence.ArcherBySpawner) +
+                ",held=" + BoolToken(evidence.ArcherByHeldItems) +
+                ",keyword=" + BoolToken(evidence.ArcherByKeywords) +
+                "],melee[spawner=" + BoolToken(evidence.MeleeBySpawner) +
+                ",held=" + BoolToken(evidence.MeleeByHeldItems) +
+                ",keyword=" + BoolToken(evidence.MeleeByKeywords) +
+                "]";
+        }
+
+        private static string BoolToken(bool value)
+        {
+            return value ? "1" : "0";
+        }
+
         private static string BuildCreatureLabel(Creature creature)
         {
             if (creature == null)
@@ -1488,6 +2131,24 @@ namespace EnemyImbuePresets.Core
             }
 
             return name + " [faction=" + creature.factionId + " " + EIPModOptions.GetFactionName(creature.factionId) + "]";
+        }
+
+        private static string BuildCorrelationId(Creature creature, float now)
+        {
+            if (creature == null)
+            {
+                return "none";
+            }
+
+            int bucket = Mathf.FloorToInt(now * 2f);
+            int hash;
+            unchecked
+            {
+                hash = (creature.GetInstanceID() * 397) ^ bucket;
+            }
+
+            uint stable = (uint)hash;
+            return stable.ToString("X8").Substring(2);
         }
     }
 }

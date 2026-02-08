@@ -25,43 +25,43 @@ FACTIONS = [
 ]
 
 FACTION_PROFILE_PRESETS = [
-    ("LoreFriendly", "Lore Friendly"),
-    ("FrontierPressure", "Frontier Pressure"),
-    ("WarfrontArcana", "Warfront Arcana"),
-    ("HighMagicConflict", "High Magic Conflict"),
-    ("RandomizedEligibility", "Randomized Eligibility"),
+    ("LoreFriendly", "Default"),
+    ("FrontierPressure", "Core Factions"),
+    ("WarfrontArcana", "Most Factions"),
+    ("HighMagicConflict", "All Factions"),
+    ("RandomizedEligibility", "Random"),
 ]
 
 ENEMY_TYPE_PROFILE_PRESETS = [
-    ("LoreFriendly", "Lore Friendly (Casters Only)"),
-    ("FrontierPressure", "Frontier Pressure (Mostly Open)"),
-    ("WarfrontArcana", "Warfront Arcana (Open)"),
-    ("HighMagicConflict", "High Magic Conflict (Open)"),
-    ("RandomizedEligibility", "Randomized Eligibility"),
+    ("LoreFriendly", "Mage"),
+    ("FrontierPressure", "Mage Bow"),
+    ("WarfrontArcana", "Mage Melee"),
+    ("HighMagicConflict", "Mage Bow Melee"),
+    ("RandomizedEligibility", "Random"),
 ]
 
 IMBUE_PRESETS = [
-    ("LoreAccurate", "Lore Friendly"),
-    ("FactionIdentity", "Frontier Doctrines"),
-    ("ArcaneSurge", "Warfront Expansion"),
-    ("ElementalChaos", "High Magic Arsenal"),
-    ("Randomized", "Randomized"),
+    ("LoreAccurate", "Default"),
+    ("FactionIdentity", "Two-Slot"),
+    ("ArcaneSurge", "Tri-Slot"),
+    ("ElementalChaos", "Tri-Slot+"),
+    ("Randomized", "Random"),
 ]
 
 CHANCE_PRESETS = [
-    ("LowIntensity", "Lore Friendly"),
-    ("BalancedBattles", "Frontier Pressure"),
-    ("AggressiveWaves", "Warfront Arcana"),
-    ("RelentlessThreat", "High Magic Conflict"),
-    ("OverflowNormalized", "Chaotic Storm"),
+    ("LowIntensity", "Default"),
+    ("BalancedBattles", "Increased"),
+    ("AggressiveWaves", "High"),
+    ("RelentlessThreat", "Very High"),
+    ("OverflowNormalized", "Maximum"),
 ]
 
 STRENGTH_PRESETS = [
-    ("FaintCharge", "Lore Friendly"),
-    ("BattleReady", "Frontier Pressure"),
-    ("Empowered", "Warfront Arcana"),
-    ("Overcharged", "High Magic Conflict"),
-    ("Cataclysmic", "Chaotic Storm"),
+    ("FaintCharge", "Default"),
+    ("BattleReady", "Increased"),
+    ("Empowered", "High"),
+    ("Overcharged", "Very High"),
+    ("Cataclysmic", "Maximum"),
 ]
 
 
@@ -73,10 +73,10 @@ FACTION_PROFILE_VALUES = {
 }
 
 ENEMY_TYPE_PROFILE_VALUES = {
-    "LoreFriendly": [True, False],
-    "FrontierPressure": [True, True],
-    "WarfrontArcana": [True, True],
-    "HighMagicConflict": [True, True],
+    "LoreFriendly": [True, True, True, False, False],
+    "FrontierPressure": [True, True, True, True, False],
+    "WarfrontArcana": [True, True, True, False, True],
+    "HighMagicConflict": [True, True, True, True, True],
 }
 
 IMBUE_VALUES = {
@@ -301,13 +301,17 @@ def add_menu_workbook() -> None:
 
     base_rows = [
         ["0", "Root (No Collapsible)", "Enable Mod", "Toggle", "On/Off", "On", "No", "Master switch"],
-        ["5", "Enemy Imbue Presets", "Faction Profile Preset", "Dropdown", "Lore Friendly | Frontier Pressure | Warfront Arcana | High Magic Conflict | Randomized Eligibility", "Lore Friendly", "N/A", "Batch-writes faction Enabled toggles"],
-        ["7", "Enemy Imbue Presets", "Enemy Type Profile Preset", "Dropdown", "Lore Friendly (Casters Only) | Frontier Pressure (Mostly Open) | Warfront Arcana (Open) | High Magic Conflict (Open) | Randomized Eligibility", "Lore Friendly (Casters Only)", "N/A", "Batch-writes caster/non-caster eligibility toggles"],
-        ["10", "Enemy Imbue Presets", "Imbue Experience Preset", "Dropdown", "Lore Friendly | Frontier Doctrines | Warfront Expansion | High Magic Arsenal | Randomized", "Lore Friendly", "N/A", "Batch-writes faction Imbue 1/2/3"],
-        ["20", "Enemy Imbue Presets", "Chance Experience Preset", "Dropdown", "Lore Friendly | Frontier Pressure | Warfront Arcana | High Magic Conflict | Chaotic Storm", "Lore Friendly", "N/A", "Batch-writes faction Chance 1/2/3 (normalized)"],
-        ["30", "Enemy Imbue Presets", "Strength Experience Preset", "Dropdown", "Lore Friendly | Frontier Pressure | Warfront Arcana | High Magic Conflict | Chaotic Storm", "Lore Friendly", "N/A", "Batch-writes faction Strength 1/2/3"],
-        ["40", "Enemy Type Eligibility", "Caster Enemies Eligible", "Toggle", "On/Off", "Preset-driven", "Enemy Type Profile", "Controls caster-type enemy eligibility"],
-        ["41", "Enemy Type Eligibility", "Non-Caster Enemies Eligible", "Toggle", "On/Off", "Preset-driven", "Enemy Type Profile", "Controls non-caster enemy eligibility"],
+        ["5", "Factioned Imbuement", "Faction Profile Preset", "Dropdown", "Default | Core Factions | Most Factions | All Factions | Random", "Default", "N/A", "Batch-writes faction Enabled toggles"],
+        ["7", "Factioned Imbuement", "Enemy Type Profile Preset", "Dropdown", "Mage | Mage Bow | Mage Melee | Mage Bow Melee | Random", "Mage", "N/A", "Batch-writes enemy archetype eligibility toggles"],
+        ["10", "Factioned Imbuement", "Imbue Experience Preset", "Dropdown", "Default | Two-Slot | Tri-Slot | Tri-Slot+ | Random", "Default", "N/A", "Batch-writes faction Imbue 1/2/3"],
+        ["20", "Factioned Imbuement", "Chance Experience Preset", "Dropdown", "Default | Increased | High | Very High | Maximum", "Default", "N/A", "Batch-writes faction Chance 1/2/3 (normalized)"],
+        ["30", "Factioned Imbuement", "Strength Experience Preset", "Dropdown", "Default | Increased | High | Very High | Maximum", "Default", "N/A", "Batch-writes faction Strength 1/2/3"],
+        ["40", "Enemy Type Eligibility", "Mage Eligible", "Toggle", "On/Off", "Preset-driven", "Enemy Type Profile", "Controls pure mage archetype eligibility"],
+        ["41", "Enemy Type Eligibility", "Mage Bow Eligible", "Toggle", "On/Off", "Preset-driven", "Enemy Type Profile", "Controls mage-bow hybrid eligibility"],
+        ["42", "Enemy Type Eligibility", "Mage Melee Eligible", "Toggle", "On/Off", "Preset-driven", "Enemy Type Profile", "Controls mage-melee hybrid eligibility"],
+        ["43", "Enemy Type Eligibility", "Bow Eligible", "Toggle", "On/Off", "Preset-driven", "Enemy Type Profile", "Controls non-caster bow archetype eligibility"],
+        ["44", "Enemy Type Eligibility", "Melee Eligible", "Toggle", "On/Off", "Preset-driven", "Enemy Type Profile", "Controls non-caster melee archetype eligibility"],
+        ["45", "Enemy Type Eligibility", "Uncertain Enemy Type Fallback", "Dropdown", "Treat As Melee | Skip Enemy", "Treat As Melee", "No", "Controls behavior when enemy-type signals are uncertain"],
     ]
     for row in base_rows:
         ws.append(row)
@@ -322,13 +326,14 @@ def add_menu_workbook() -> None:
             ws.append([str(order + slot * 3), faction_name, f"{short_name} Strength {slot}", "Slider", "0..100 in 5% steps", "Preset-driven", "Strength", "Source of truth for slot strength"])
 
     diag_rows = [
-        ["999", "Diagnostics", "Log Level", "Dropdown", "Off | Basic | Verbose", "Basic", "No", "Logging detail"],
+        ["999", "Diagnostics", "Log Level", "Dropdown", "Off | Basic | Diagnostics | Verbose", "Basic", "No", "Logging detail"],
         ["1000", "Diagnostics", "Imbue Update Interval", "Dropdown", "0.05s..1.00s", "0.25s", "No", "Performance/response tradeoff"],
         ["1001", "Diagnostics", "Enemy Rescan Interval", "Dropdown", "0.50s..5.00s", "2.00s", "No", "Tracking refresh interval"],
         ["1002", "Diagnostics", "Dump Factions", "Button", "False/True", "False", "No", "One-shot debug action"],
         ["1003", "Diagnostics", "Dump Wave-Faction Map", "Button", "False/True", "False", "No", "One-shot debug action"],
         ["1004", "Diagnostics", "Dump State", "Button", "False/True", "False", "No", "One-shot debug action"],
-        ["1005", "Diagnostics", "Force Reapply", "Button", "False/True", "False", "No", "One-shot debug action"],
+        ["1005", "Diagnostics", "Dump Enemy Type Detection", "Button", "False/True", "False", "No", "One-shot debug action"],
+        ["1006", "Diagnostics", "Force Reapply", "Button", "False/True", "False", "No", "One-shot debug action"],
     ]
     for row in diag_rows:
         ws.append(row)
@@ -349,8 +354,12 @@ def add_menu_workbook() -> None:
     impact.append(["Section", "Faction", "Collapsible Option", "Source Of Truth", "Written By Preset Family", "Profile Can Disable", "Notes"])
     style_header(impact, 1)
 
-    impact.append(["Enemy Type Eligibility", "N/A", "Caster Enemies Eligible", "Yes", "Enemy Type Profile", "N/A", "Runtime caster-type detection gate"])
-    impact.append(["Enemy Type Eligibility", "N/A", "Non-Caster Enemies Eligible", "Yes", "Enemy Type Profile", "N/A", "Runtime non-caster detection gate"])
+    impact.append(["Enemy Type Eligibility", "N/A", "Mage Eligible", "Yes", "Enemy Type Profile", "N/A", "Runtime pure mage detection gate"])
+    impact.append(["Enemy Type Eligibility", "N/A", "Mage Bow Eligible", "Yes", "Enemy Type Profile", "N/A", "Runtime mage-bow detection gate"])
+    impact.append(["Enemy Type Eligibility", "N/A", "Mage Melee Eligible", "Yes", "Enemy Type Profile", "N/A", "Runtime mage-melee detection gate"])
+    impact.append(["Enemy Type Eligibility", "N/A", "Bow Eligible", "Yes", "Enemy Type Profile", "N/A", "Runtime non-caster bow detection gate"])
+    impact.append(["Enemy Type Eligibility", "N/A", "Melee Eligible", "Yes", "Enemy Type Profile", "N/A", "Runtime non-caster melee detection gate"])
+    impact.append(["Enemy Type Eligibility", "N/A", "Uncertain Enemy Type Fallback", "Yes", "No", "N/A", "Fallback behavior for uncertain enemy-type detection"])
 
     for key, faction_name, short_name in FACTIONS:
         impact.append([faction_name, short_name, f"{short_name} Enabled", "Yes", "Faction Profile", "Yes", "Eligibility toggle controlled by Faction Profile Preset"])
@@ -379,17 +388,17 @@ def add_matrix_workbook() -> None:
     overview = wb.active
     overview.title = "Overview"
 
-    overview.append(["Enemy Imbue Presets - Preset To Collapsible Mapping"])
+    overview.append(["Factioned Imbuement - Preset To Collapsible Mapping"])
     overview.append(["Source of truth: faction collapsible values. Presets only batch-write those values."])
     overview.append([""])
     overview.append(["Preset Family", "Writes Which Collapsible Options", "Rows Affected", "Notes"])
     overview.append(["Faction Profile", "Faction Enabled toggles", "8", "Controls which factions can roll imbues"])
-    overview.append(["Enemy Type Profile", "Caster/Non-Caster eligibility toggles", "2", "Controls which runtime enemy types are eligible"])
+    overview.append(["Enemy Type Profile", "Enemy archetype eligibility toggles", "5", "Controls which runtime enemy types are eligible"])
     overview.append(["Imbue", "Faction Imbue 1/2/3", "24", "Can write None to disable a slot"])
     overview.append(["Chance", "Faction Chance 1/2/3", "24", "Per-faction totals normalized to <=100%"])
     overview.append(["Strength", "Faction Strength 1/2/3", "24", "Clamped to 0..100"])
     overview.append([""])
-    overview.append(["Total collapsible values managed by presets", "82", "10 eligibility toggles + 72 slot fields", ""])
+    overview.append(["Total collapsible values managed by presets", "77", "5 eligibility toggles + 72 slot fields", ""])
 
     for cell in overview[1]:
         cell.font = TITLE_FONT
@@ -421,8 +430,11 @@ def add_matrix_workbook() -> None:
     style_header(enemy_type_profile_ws, 1)
 
     rows = [
-        ("Caster Enemies Eligible", 0, "Lore-friendly defaults caster-only; higher profiles open non-casters."),
-        ("Non-Caster Enemies Eligible", 1, "Set by Enemy Type Profile Preset; still overridable manually until preset changes."),
+        ("Mage Eligible", 0, "Enabled in all non-random presets."),
+        ("Mage Bow Eligible", 1, "Enabled in all non-random presets."),
+        ("Mage Melee Eligible", 2, "Enabled in all non-random presets."),
+        ("Bow Eligible", 3, "Enabled by Mage Bow / Mage Bow Melee presets."),
+        ("Melee Eligible", 4, "Enabled by Mage Melee / Mage Bow Melee presets."),
     ]
 
     for label, value_index, note in rows:

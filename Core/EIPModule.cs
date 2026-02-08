@@ -1,6 +1,7 @@
 ﻿using System;
 using EnemyImbuePresets.Configuration;
 using ThunderRoad;
+using UnityEngine;
 
 namespace EnemyImbuePresets.Core
 {
@@ -15,7 +16,8 @@ namespace EnemyImbuePresets.Core
 
             try
             {
-                EIPLog.Info("Enemy Imbue Presets v" + EIPModOptions.VERSION + " enabled.");
+                EIPLog.Info("Factioned Imbuement v" + EIPModOptions.VERSION + " enabled.");
+                EIPTelemetry.Initialize();
                 EnemyImbueManager.Instance.Initialize();
                 EIPModOptionSync.Instance.Initialize();
                 Hooks.EventHooks.Subscribe();
@@ -32,6 +34,7 @@ namespace EnemyImbuePresets.Core
 
             try
             {
+                EIPTelemetry.Update(Time.unscaledTime);
                 EIPModOptionSync.Instance.Update();
                 EnemyImbueManager.Instance.Update();
             }
@@ -48,7 +51,8 @@ namespace EnemyImbuePresets.Core
                 Hooks.EventHooks.Unsubscribe();
                 EIPModOptionSync.Instance.Shutdown();
                 EnemyImbueManager.Instance.Shutdown();
-                EIPLog.Info("Enemy Imbue Presets disabled.");
+                EIPTelemetry.Shutdown();
+                EIPLog.Info("Factioned Imbuement disabled.");
             }
             catch (Exception ex)
             {
