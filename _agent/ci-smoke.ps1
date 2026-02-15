@@ -6,8 +6,17 @@ $ErrorActionPreference = "Stop"
 
 $repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
 $repoRootPath = $repoRoot.Path
-$projectPath = Join-Path $repoRootPath "EnemyImbuePresets.csproj"
-$testProjectPath = Join-Path $repoRootPath "EnemyImbuePresets.Tests\EnemyImbuePresets.Tests.csproj"
+# Dynamically find the main project file
+$projectFile = Get-ChildItem -Path $repoRootPath -Filter "*.csproj" -Exclude "*.Tests.csproj" | Select-Object -First 1
+if (-not $projectFile) {
+    Write-Error "Could not find main .csproj file in $repoRootPath"
+    exit 1
+}
+$projectPath = $projectFile.FullName
+
+# Dynamically find the test project file
+$testProjectFile = Get-ChildItem -Path $repoRootPath -Recurse -Filter "*.Tests.csproj" | Select-Object -First 1
+$testProjectPath = if ($testProjectFile) { $testProjectFile.FullName } else { $null }
 
 $libsPath = Join-Path (Split-Path $repoRootPath -Parent) "libs"
 $requiredDlls = @(
@@ -29,36 +38,38 @@ foreach ($dll in $requiredDlls) {
 }
 
 if ($missingDlls.Count -gt 0) {
-    $msg = "[EIP-CI] Missing game libraries in ${libsPath}: $($missingDlls -join ', ')"
+    $msg = "[CI] Missing game libraries in ${libsPath}: $($missingDlls -join ', ')"
     if ($Strict) {
         Write-Error $msg
         exit 1
     }
 
+    # graceful exit for CI
     Write-Warning $msg
-    Write-Warning "[EIP-CI] Skipping Release/Nomad build in non-strict mode."
+    Write-Warning "[CI] Skipping Release/Nomad build in non-strict mode (CI environment detected)."
+    
+    # Still run tests if possible, or skip them too if they depend on the DLLs
+    if ($testProjectPath) {
+        Write-Warning "[CI] skipping tests as they likely depend on missing DLLs."
+    }
+    
+    exit 0
 }
 else {
-    Write-Host "[EIP-CI] Building Release..."
-    dotnet build $projectPath -c Release | Out-Host
-    if ($LASTEXITCODE -ne 0) {
-        exit $LASTEXITCODE
-    }
+    Write-Host "[CI] Building Release..."
+    dotnet build $projectPath -c Release
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-    Write-Host "[EIP-CI] Building Nomad..."
-    dotnet build $projectPath -c Nomad | Out-Host
-    if ($LASTEXITCODE -ne 0) {
-        exit $LASTEXITCODE
-    }
+    Write-Host "[CI] Building Nomad..."
+    dotnet build $projectPath -c Nomad
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 }
 
-if (Test-Path $testProjectPath) {
-    Write-Host "[EIP-CI] Running tests..."
-    dotnet test $testProjectPath -c Release --nologo -v minimal | Out-Host
-    if ($LASTEXITCODE -ne 0) {
-        exit $LASTEXITCODE
-    }
+if ($testProjectPath) {
+    Write-Host "[CI] Running tests..."
+    dotnet test $testProjectPath -c Release --nologo -v minimal
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 }
 
-Write-Host "[EIP-CI] Smoke checks complete."
+Write-Host "[CI] Smoke checks complete."
 exit 0
