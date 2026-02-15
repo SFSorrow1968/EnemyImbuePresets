@@ -1,22 +1,14 @@
 # Git Workflow
 
-## Branch-first rule
-- Never work directly on `main`.
-- Start each task on a feature branch, e.g. `agent/<topic>` or `feat/<topic>`.
+## 1. Branch Strategy
+- **Feature Branches**: `agent/<topic>`. Never commit to `main`.
 
-## Session checklist
-1. `git checkout main`
-2. `git pull` (if remote exists)
-3. `git checkout -b agent/<topic>`
-4. Make changes and validate (`Release` + `Nomad` builds)
-5. Commit with a focused message
-6. Merge to `main` only after validation
-
-## Merge reminder policy
-- End each substantial task update with: `Reminder: merge <feature-branch> into main after validation.`
-- If a branch is older than one session/day, rebase or merge `main` before continuing.
-
-## Suggested branch names
-- `agent/perf-<topic>`
-- `feat/<topic>`
-- `fix/<topic>`
+## 2. Session Workflow
+1. Sync `main`.
+2. Checkout feature branch.
+3. **Execute Task**: Code, Test, Verify builds (`Release` & `Nomad`).
+4. **Snapshot Commit**: Create a commit with a concise task description.
+   - Example: `git commit -m "Implement Fireball feature/Snapshot"`
+5. **Version Tag**: Create/update a tag pointing to this snapshot.
+   - Example: `git tag -f v1.0.0-snapshot`
+6. **Merge**: Merge to `main` only after validation.
